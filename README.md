@@ -16,14 +16,14 @@ Built for students and their families. Try it on the scam before a real one reac
 - **Voice, three ways:**
   1. Text only (captions).
   2. Browser voice: on-device `speechSynthesis` and `SpeechRecognition`. Free, with no key.
-  3. **deAPI**: Kokoro preset voices for the caller and Whisper Large V3 transcription for your replies. Bring your own key; it is stored only in `sessionStorage` for that tab.
+  3. **deAPI**: Kokoro preset voices for the caller and Whisper Large V3 transcription for your replies. Bring your own key; it is kept in `sessionStorage` for that tab and sent only to deAPI. Because it lives in the browser, use a key you can revoke.
 
 ## Safety
 
 - Every person, company, case number and phone number is made up (555‑010‑01xx numbers are reserved for fiction).
 - The app never places calls or sends SMS. It has no backend and no analytics.
 - Runs of 4 or more digits you type or say are masked (`••••`) in the transcript.
-- The app uses preset TTS voices only. There is no voice cloning, and deAPI does not offer it.
+- The app uses deAPI's preset Kokoro voices only. It never uses voice cloning.
 - Nothing leaves the browser unless you enable deAPI. In that case only the caller's line (TTS) or your recorded reply (STT) is sent to `oai.deapi.ai`.
 
 ## Run it
@@ -31,7 +31,7 @@ Built for students and their families. Try it on the scam before a real one reac
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 37 unit tests (Vitest)
+npm test           # 42 unit tests (Vitest)
 npm run typecheck
 npm run build      # static site in dist/
 ```

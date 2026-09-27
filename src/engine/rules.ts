@@ -96,7 +96,7 @@ export const RULES: Rule[] = [
   },
   {
     id: 'agree-pay', label: 'Agreed to pay', side: 'user', move: 'comply', severity: 3,
-    patterns: [/\b(i('?ll| will) (pay|send|buy|transfer|get (the|some) (cards?|gift cards?))|sending (it|now|the money)|how (much|do i pay)|where do i send|ok(ay)?,? i('?ll| will) do it|i('?ll| will) download)\b/i],
+    patterns: [/\b(i('?ll| will|'?m going to| am going to|'?m gonna| can) (pay|send|buy|transfer|wire|download|(get|grab) (them|(the |some )?(gift )?(cards?|money|bitcoin|crypto)))|sending (it|now|the money)|how (much|do i pay)|where do i send|ok(ay)?,? i('?ll| will) do it|here it is|let me (pay|send|buy|get the cards))\b/i],
     explain: 'Agreeing to pay is the moment the scam succeeds. Nothing legitimate needs it on this call.',
   },
   {
@@ -111,12 +111,12 @@ export const RULES: Rule[] = [
   },
   {
     id: 'verify', label: 'Verified independently', side: 'user', move: 'verify', severity: 1,
-    patterns: [/\b(call (you|them|the bank|my bank|the company|back)|official (number|website|app)|number on (the back|my card)|check with|verify|log in (myself|on my own)|look (it|you) up|ask my (mom|mum|dad|parents?|manager|boss|family))\b/i],
+    patterns: [/\b(call (you|them|the bank|my bank|the company|back)|official (number|website|app)|number on (the back|my card)|check with|verify|log in (myself|on my own)|look (it|you) up|ask my (mom|mum|dad|parents?|manager|boss|family)|(let me|i('?ll| will)|i('?m| am) going to) (call|text|ask) my|email me|in writing)\b/i],
     explain: 'Hanging up and contacting the organisation through a number you already trust beats every script.',
   },
   {
     id: 'refuse', label: 'Refused or called it out', side: 'user', move: 'refuse', severity: 1,
-    patterns: [/\b((?<!oh )no\b(?! problem)|nope|not (going to|gonna)|i won'?t|i don'?t (give|share)|this (is|sounds like) a scam|scam(mer)?|goodbye|bye|hang(ing)? up|not interested|stop calling)\b/i],
+    patterns: [/\b((?<!oh )no\b(?! (problem|idea|worries))|no way|not a chance|nope|not (going to|gonna)|i won'?t|i don'?t (give|share)|this (is|sounds like) a scam|(?<!(isn'?t|not) a )scam(mer)?(?!,? right)|goodbye|bye|hang(ing)? up|not interested|stop calling)\b/i],
     explain: 'A clear no ends the game. Scammers only win on calls that keep going.',
   },
 ];

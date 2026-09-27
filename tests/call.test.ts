@@ -57,6 +57,17 @@ describe('call session', () => {
     expect(a.transcript.some((l) => /\d{4}/.test(l.text) && l.speaker === 'user')).toBe(false);
   });
 
+  it('ends as scammed when the user leaks a code or agrees to pay on the very first reply', () => {
+    const call = new CallSession(getScenario('bank'), fakeClock());
+    call.answer();
+    expect(call.respond('Okay, the code is 4 8 1 5 1 6').ended).toBe(true);
+    expect(call.outcome).toBe('scammed');
+    const call2 = new CallSession(getScenario('grandparent'), fakeClock());
+    call2.answer();
+    call2.respond("I'm going to send you the money now");
+    expect(call2.outcome).toBe('scammed');
+  });
+
   it('caller gives up after two safe moves and the user scores high', () => {
     const call = new CallSession(getScenario('internship'), fakeClock());
     call.answer();

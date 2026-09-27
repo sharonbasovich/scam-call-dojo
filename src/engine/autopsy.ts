@@ -71,7 +71,7 @@ export function buildAutopsy(call: CallSession): Autopsy {
   if (outcome !== 'declined') {
     for (const m of userMoves) score += MOVE_POINTS[m.ruleId] ?? 0;
     score -= callerLinesAfter * LINGER_PENALTY_PER_LINE;
-    if (outcome === 'scammed') score = Math.min(score, 45);
+    if (outcome === 'scammed') score = Math.min(score, 39);
     if (outcome === 'survived') score -= 5;
   }
   score = Math.max(0, Math.min(100, Math.round(score)));
