@@ -58,6 +58,7 @@ export interface Scenario {
   belt: Belt;
   callerName: string;
   callerNumber: string;
+  /** Two-letter monogram shown as the caller's contact photo. */
   avatar: string;
   blurb: string;
   voice: { pitch: number; rate: number; deapiVoice: string };

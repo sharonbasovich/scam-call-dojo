@@ -8,9 +8,9 @@ export const SCENARIOS: Scenario[] = [
     belt: 'white',
     callerName: 'Northmark Bank Fraud Dept.',
     callerNumber: '+1 (555) 010-0142',
-    avatar: '🏦',
+    avatar: 'NB',
     blurb: 'Your “bank” spotted a suspicious charge and needs one tiny code.',
-    voice: { pitch: 0.9, rate: 1.05, deapiVoice: 'am_michael' },
+    voice: { pitch: 0.9, rate: 1.05, deapiVoice: 'am_onyx' },
     turns: [
       { line: 'Hi, this is Daniel from the Northmark Bank fraud department. We flagged a charge of $849 at an electronics store. Did you make that purchase?' },
       {
@@ -38,9 +38,9 @@ export const SCENARIOS: Scenario[] = [
     belt: 'yellow',
     callerName: 'Pineview Labs Hiring Team',
     callerNumber: '+1 (555) 010-0177',
-    avatar: '💼',
+    avatar: 'PL',
     blurb: 'A remote internship, no interview, $45/hour. Just one small starter fee.',
-    voice: { pitch: 1.15, rate: 1.1, deapiVoice: 'af_bella' },
+    voice: { pitch: 1.15, rate: 1.1, deapiVoice: 'af_nova' },
     turns: [
       { line: 'Hi! It’s Priya from the Pineview Labs hiring team. Congratulations, you have been selected for our remote software internship. $45 an hour, fully remote, no interview needed!' },
       {
@@ -68,9 +68,9 @@ export const SCENARIOS: Scenario[] = [
     belt: 'orange',
     callerName: 'Dana (Manager)',
     callerNumber: '+1 (555) 010-0123',
-    avatar: '👔',
+    avatar: 'D',
     blurb: 'Your part-time job manager needs a quiet favour before a client meeting.',
-    voice: { pitch: 1.0, rate: 1.15, deapiVoice: 'af_sarah' },
+    voice: { pitch: 1.0, rate: 1.15, deapiVoice: 'af_sky' },
     turns: [
       { line: 'Hey, it’s Dana. I’m on a new number, my phone died. Quick favour, I’m about to walk into a client meeting. Are you free for two minutes?' },
       {
@@ -98,9 +98,9 @@ export const SCENARIOS: Scenario[] = [
     belt: 'green',
     callerName: 'SwiftParcel Dispatch',
     callerNumber: '+1 (555) 010-0188',
-    avatar: '📦',
+    avatar: 'SP',
     blurb: 'Your package is held at customs. A tiny fee and one app gets it moving.',
-    voice: { pitch: 0.95, rate: 1.0, deapiVoice: 'bm_george' },
+    voice: { pitch: 0.95, rate: 1.0, deapiVoice: 'bm_fable' },
     turns: [
       { line: 'Hello, this is SwiftParcel dispatch. We have a package in your name held at the depot. Our records show an unpaid customs fee of $2.99.' },
       {
@@ -128,9 +128,9 @@ export const SCENARIOS: Scenario[] = [
     belt: 'blue',
     callerName: 'CoinHaven Recovery Unit',
     callerNumber: '+1 (555) 010-0199',
-    avatar: '🪙',
+    avatar: 'CH',
     blurb: 'They found the crypto you lost. They just need a release fee… in crypto.',
-    voice: { pitch: 0.85, rate: 0.95, deapiVoice: 'am_adam' },
+    voice: { pitch: 0.85, rate: 0.95, deapiVoice: 'am_echo' },
     turns: [
       { line: 'Good afternoon. I’m Agent Cole with the CoinHaven recovery unit, badge number 4471. We traced funds stolen from an exchange, and your wallet is on our list.' },
       {
@@ -158,9 +158,9 @@ export const SCENARIOS: Scenario[] = [
     belt: 'black',
     callerName: 'Unknown',
     callerNumber: '+1 (555) 010-0111',
-    avatar: '☎️',
+    avatar: '?',
     blurb: 'Crying voice, a car accident, bail money. The hardest call to hang up on.',
-    voice: { pitch: 1.2, rate: 1.2, deapiVoice: 'am_liam' },
+    voice: { pitch: 1.2, rate: 1.2, deapiVoice: 'af_alloy' },
     turns: [
       { line: 'Hey… it’s me. Please don’t freak out. I was in a car accident and I’m kind of in trouble. Please help, I’m really scared.' },
       {

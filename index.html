@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Scam Call Dojo: a flight simulator for scam phone calls. Practise getting scammed, safely." />
+    <meta name="theme-color" content="#0b0f1a" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥋</text></svg>" />
+    <title>Scam Call Dojo</title>
+  </head>
+  <body>
+    <a class="skip" href="#app">Skip to app</a>
+    <main class="stage">
+      <section class="pitch" aria-label="About">
+        <h1>Scam Call Dojo</h1>
+        <p class="tag">A flight simulator for scam phone calls.<br />Get scammed here, not out there.</p>
+        <ul class="facts">
+          <li>6 fictional scam calls, white belt to black belt</li>
+          <li>Answer by voice or by typing. Microphone optional.</li>
+          <li>Rule-based tactic detector. Same input, same verdict, every time.</li>
+          <li>Timestamped Call Autopsy shows the exact second to hang up</li>
+        </ul>
+        <p class="safety"><strong>Safety:</strong> every caller, company and number is made up. No real calls or texts are ever made. Use made-up codes and details only. Digit runs are masked in the transcript.</p>
+      </section>
+      <div class="phone" role="application" aria-label="Simulated phone">
+        <div class="notch" aria-hidden="true"></div>
+        <div id="app" class="screen" tabindex="-1"></div>
+      </div>
+    </main>
+    <div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="false"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
