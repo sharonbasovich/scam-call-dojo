@@ -54,5 +54,5 @@ export function redact(text: string): string {
 
 export function isHangUpIntent(raw: string): boolean {
   const text = normalize(raw);
-  return /\b(hang(ing)? up|goodbye|bye|i('?m| am) (done|going)|click)\b/i.test(text) && !/\b(won'?t|don'?t|not) hang up\b/i.test(text);
+  return /\b(hang(ing)? up|goodbye|bye|i('?m| am) (done|going now)|click)\b/i.test(text) && !/\b(won'?t|don'?t|not) hang up\b/i.test(text);
 }

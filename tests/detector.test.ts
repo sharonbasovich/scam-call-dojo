@@ -54,6 +54,25 @@ describe('user move detection', () => {
   });
 });
 
+describe('user move edge cases', () => {
+  it('catches payment agreements phrased as plans', () => {
+    for (const t of ["I'm going to send you the money now", 'Okay, I am going to buy the gift cards', "I'll wire it", "I'll get them now", 'Fine, here it is'])
+      expect(ids(t, 'user')).toContain('agree-pay');
+  });
+  it('does not treat verification plans as payment', () => {
+    for (const t of ["I'll get the number from my card and call the bank", "I'll do it myself on the official app"]) expect(ids(t, 'user')).not.toContain('agree-pay');
+  });
+  it('does not credit refusal for "no idea" or "not a scam, right?"', () => {
+    expect(ids('I have no idea', 'user')).not.toContain('refuse');
+    expect(ids("This isn't a scam, right?", 'user')).not.toContain('refuse');
+    expect(ids('Not a chance', 'user')).toContain('refuse');
+  });
+  it('credits checking with family or asking for it in writing', () => {
+    expect(ids('Hold on, let me call my dad', 'user')).toContain('verify');
+    expect(ids('Can you email me instead?', 'user')).toContain('verify');
+  });
+});
+
 describe('helpers', () => {
   it('redacts long digit runs', () => {
     expect(redact('code 4815 16 ok')).toBe('code •••• •• ok');
@@ -63,6 +82,8 @@ describe('helpers', () => {
     expect(isHangUpIntent('Goodbye')).toBe(true);
     expect(isHangUpIntent("I'm hanging up now")).toBe(true);
     expect(isHangUpIntent("I won't hang up")).toBe(false);
+    expect(isHangUpIntent("I'm going to send the money")).toBe(false);
+    expect(isHangUpIntent("I'm going now")).toBe(true);
   });
   it('has unique rule ids and at least 20 rules', () => {
     expect(new Set(RULES.map((r) => r.id)).size).toBe(RULES.length);

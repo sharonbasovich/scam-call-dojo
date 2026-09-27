@@ -62,9 +62,13 @@ function announce(msg: string): void {
   while (live.childElementCount > 5) live.firstElementChild?.remove();
 }
 
+let renders = 0;
+const narrow = window.matchMedia('(max-width: 480px)');
+
 function render(html: string, focusSel = 'h2'): void {
   app.innerHTML = html;
   app.scrollTop = 0;
+  if (renders++ > 0 && narrow.matches) app.closest('.phone')?.scrollIntoView({ block: 'start' });
   (app.querySelector<HTMLElement>(focusSel) ?? app).focus({ preventScroll: true });
 }
 
@@ -124,7 +128,7 @@ function settingsScreen(): void {
         <label for="key">deAPI API key <span class="muted">(kept in this tab only, sent only to oai.deapi.ai)</span></label>
         <div class="row"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="${hasKey ? '•••••••• saved for this tab' : 'Paste key'}" />
         <button id="key-save" class="ghost">${hasKey ? 'Replace' : 'Save'}</button>${hasKey ? '<button id="key-clear" class="ghost">Forget</button>' : ''}</div>
-        <p class="muted small">Get a key: app.deapi.ai → Settings → API Keys. Uses preset voices only. No voice cloning.</p>
+        <p class="muted small">Get a key: app.deapi.ai → Settings → API Keys. Kept in this tab only and sent only to deAPI. Preset voices, no voice cloning.</p>
       </div>
       <label class="switch"><input type="checkbox" id="coach" ${settings.coach ? 'checked' : ''}/> Coach mode: show red flags live during the call</label>
       <label for="speed">Caller speaking speed <output id="speed-out">${settings.speed.toFixed(1)}×</output></label>
@@ -295,7 +299,7 @@ function inCall(call: CallSession): void {
   const input = app.querySelector('#say') as HTMLInputElement;
   const push = (l: TranscriptLine) => {
     log.insertAdjacentHTML('beforeend', bubble(l, settings.coach));
-    log.lastElementChild?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    log.scrollTo({ top: log.scrollHeight, behavior: 'smooth' });
   };
   const finish = () => {
     stopVoice();
@@ -427,7 +431,7 @@ function showAutopsy(call: CallSession): void {
       ${a.hangUpAt !== null ? `<div class="hang-callout"><strong>Hang-up moment: ${formatTime(a.hangUpAt)}</strong><p>“${esc(a.hangUpLine ?? '')}”</p>
         ${a.lingeredMs > 1000 ? `<p class="small">You stayed on for another <strong>${Math.round(a.lingeredMs / 1000)}s</strong> after this.</p>` : ''}</div>` : ''}
       ${cats.length ? `<h3>Tactics used on you</h3><ul class="bars">${cats.map((k) => `<li><span>${CATEGORY_LABELS[k]}</span><span class="bar"><i class="tac-${k}" style="width:${(a.tacticCounts[k] / maxCat) * 100}%"></i></span><b>${a.tacticCounts[k]}</b></li>`).join('')}</ul>` : ''}
-      ${risky.length || good.length ? `<h3>Your moves</h3><div class="chips">${flagChips([...risky, ...good])}</div>` : ''}
+      ${risky.length || good.length ? `<h3>Your moves</h3><div class="chips">${flagChips([...risky, ...good].filter((f, i, all) => all.findIndex((g) => g.ruleId === f.ruleId) === i))}</div>` : ''}
       ${a.transcript.length ? `<h3>Timestamped transcript</h3><ol class="timeline">${timeline}</ol>` : ''}
       <h3>The tell</h3><p>${esc(s.tell)}</p>
       <h3>Say this next time</h3><p class="script">${esc(s.safeScript)}</p>

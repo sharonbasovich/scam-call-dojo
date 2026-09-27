@@ -66,7 +66,7 @@ export class CallSession {
     this.transcript.push({ t: this.elapsed(), speaker: 'user', text: redact(text), flags });
 
     const gaveItAway = flags.some((f) => f.move === 'leak' && f.severity === 3) || flags.some((f) => f.ruleId === 'agree-pay');
-    if (gaveItAway && this.turnIndex >= 1) {
+    if (gaveItAway) {
       const caller = this.say(this.scenario.win);
       this.finish('scammed');
       return { caller, ended: true };

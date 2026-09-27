@@ -1,59 +1,58 @@
 # Devpost submission copy: Scam Call Dojo
 
-> Paste into the LovHack Season 3 project form. Fill in the bracketed links after deploying and recording.
+> Paste into the LovHack Season 3 project form. Fill in the video link after recording.
 
 **Project name:** Scam Call Dojo
 
-**Tagline (≤ 60 chars):** A flight simulator for scam phone calls.
+**Tagline (≤ 60 chars):** Get scammed here, not out there.
 
-**Demo:** [live URL]  ·  **Video:** [YouTube link, 2–3 min]  ·  **Code:** [GitHub URL]
+**Elevator pitch (≤ 200 chars):** A flight simulator for scam phone calls. A fictional scammer calls you in the browser, you try to resist, and a Call Autopsy shows the exact second you should have hung up.
+
+**Demo:** https://sharonbasovich.github.io/scam-call-dojo/  ·  **Video:** [YouTube link, 2–3 min]  ·  **Code:** https://github.com/sharonbasovich/scam-call-dojo
 
 ---
 
-## Inspiration
-The phone rings. "Hi, this is Daniel from your bank's fraud department." Most of us *know* the rules, like never share the code and never pay in gift cards. We still fall for it, because knowing the rule and following it with a stranger rushing you are different skills. Pilots don't learn engine failures from a pamphlet; they crash in a simulator first. We wanted that for scam calls: somewhere you can get scammed safely, see exactly how it happened, and try again.
+## In 10 seconds
+Your phone rings: *"Hi, this is Daniel from your bank's fraud department."* You answer, by typing or talking. He pushes. You read him the code. **Scammed · 38/100 · White belt.** The Call Autopsy then pins the exact timestamped line where you should have hung up, names every trick he used, and gives you a script to say next time. Then you try again.
 
-Students are a big target (fake internships, "boss" gift-card texts, parcel fees, crypto "recovery"), and so are our grandparents. Scam Call Dojo is built for both.
+## Inspiration
+Everyone knows "never share the code". People share it anyway, because knowing a rule and following it while a confident stranger rushes you are different skills. Pilots don't learn engine failures from a pamphlet; they practise in a simulator. Scam calls have no simulator, so we built one.
+
+Students are a major target: fake remote internships with a "starter fee", a "boss" who needs gift cards before a meeting, parcel "customs fees", crypto "recovery agents". Our grandparents get the "your grandson is in trouble" call. Scam Call Dojo trains all of these, safely.
 
 ## What it does
-1. **A phone rings in your browser.** Pick one of six fictional scam calls, from white belt to black belt: a frozen bank account, a dream internship, your boss in a meeting, a stuck parcel, a crypto recovery agent, and a family emergency.
-2. **You answer.** The scammer speaks, using browser voice or deAPI Kokoro voices, and you reply by typing, tapping a quick reply, or talking (browser dictation or deAPI Whisper). The script branches: resist and it pushes back, slip and it pushes harder.
-3. **Coach mode** highlights red flags live as they're said: *Fake deadline*, *Borrowed authority*, *Asks for a one-time code*, *Untraceable payment*.
-4. **The Call Autopsy.** When the call ends you get:
-   - a **Resistance Score** and **belt**;
-   - the **hang-up moment**, the exact timestamped line where you should have hung up, and how many seconds you stayed on after it;
-   - tactic counts, your good and bad moves, and the full timestamped transcript with the trigger words highlighted;
-   - **the tell** and a **"Say this instead"** script;
-   - a **Share with Grandma** safety card.
+1. **A fictional scam call rings.** Six scenarios, white belt to black belt: The Frozen Account, The Dream Internship, The Boss in a Meeting, The Stuck Parcel, The Recovery Agent, The Family Emergency.
+2. **You respond.** Type, tap a quick reply, or talk (browser dictation or deAPI Whisper). The caller speaks through browser voice or a deAPI Kokoro preset voice. The call branches: resist and he escalates; slip and he closes in. Read out a code or agree to pay and the call ends as **Scammed**.
+3. **Coach mode** (optional) underlines red flags live: *Fake deadline*, *Borrowed authority*, *Asks for a one-time code*, *Untraceable payment*.
+4. **The Call Autopsy:** a Resistance Score and belt, the timestamped **hang-up moment** and how long you stayed on after it, tactic counts, your good and risky moves, the masked transcript with trigger words highlighted, **the tell**, a **"Say this instead"** script, and a copyable **Share with Grandma** safety card.
 
 ## How we built it
-- **Vite + TypeScript**, a static site with no backend, deployed on GitHub Pages.
-- **A deterministic engine, not an LLM guess.** 23 regex rules with severity and plain-language explanations detect six caller tactic families and five user-move types. A `CallSession` state machine drives the scripted, branching scenarios, and `buildAutopsy()` scores the call. Same input, same verdict, every time, so the feedback is explainable and testable.
-- **37 Vitest tests** cover detection, false-positive guards ("Oh no!" is not a refusal), redaction, scenario transitions, scoring, timestamps and the deAPI request format.
-- **Voice:** Web Speech API for free on-device voice and dictation, plus **deAPI** for Kokoro TTS with a preset voice per character and Whisper Large V3 STT on recorded replies.
-- **Accessibility:** typing always works, with no mic required. The app has captions for every line, a screen-reader live region, keyboard shortcuts, focus management, reduced motion, and a mobile layout.
+- **Vite + TypeScript** static site, no backend, no accounts, no analytics, deployed on GitHub Pages.
+- **Deterministic and explainable, no LLM in the loop.** 23 regex rules (with severity and a plain-language explanation) detect caller tactics and user moves. A `CallSession` state machine drives the scripted branching calls and `buildAutopsy()` scores them. Same input, same verdict, every time, and every flag points to the words that triggered it.
+- **42 Vitest tests** run in CI before each deploy. They cover detection, false-positive guards ("Oh no!", "I have no idea" and "this isn't a scam, right?" are not refusals; "I'm going to send the money" is not a hang-up), first-reply leaks, redaction, branching, scoring and the deAPI request format.
+- **Accessible by default:** typing always works with no mic or key, every line is captioned, screen-reader live region, keyboard shortcuts (A answer / D decline), focus management, reduced motion, and a full-screen mobile layout.
 
-## Best Use of deAPI
-deAPI is the scammer's voice and the user's ears:
-- `POST /v1/audio/speech` with `model: "Kokoro"`: each fictional caller has its own preset voice (e.g. `am_onyx` for the "bank", `af_nova` for the recruiter), so calls feel real.
-- `POST /v1/audio/transcriptions` with `model: "WhisperLargeV3"`: your spoken reply is recorded in the browser and transcribed, then run through the same deterministic detector.
-- The key is user-supplied at runtime and kept in `sessionStorage` only; it is never bundled into the site. deAPI doesn't support voice cloning, and we only use preset voices.
+## deAPI integration
+deAPI is optional and gives the scammer a voice and the user ears:
+- `POST /v1/audio/speech`, `model: "Kokoro"`: each fictional caller has its own **preset** voice (`am_onyx` for the "bank", `af_nova` for the recruiter, …).
+- `POST /v1/audio/transcriptions`, `model: "WhisperLargeV3"`: your recorded reply is transcribed, then scored by the same deterministic detector.
+- The user pastes their own key at runtime. It is never bundled into the site; it is kept in `sessionStorage` for that tab and sent only to deAPI. Because it lives in the browser, use a key you are comfortable revoking. Scam Call Dojo uses preset voices only and never uses voice cloning.
 
 ## Challenges we ran into
-- **False positives.** "Oh no! What do you need?" first counted as a *refusal* because of the word "no", and "I'll stay on the line" slipped through because of a curly apostrophe. We normalise punctuation and resolve conflicting user moves, with a test for each case.
-- **Scoring the right moment.** "When should I have hung up?" needed a rule that is simple and still fair. We use the first caller line with a critical tactic (a code, a password or payment) or with enough pressure stacked up. The time you stay on after that point costs you score.
-- **Keeping it safe.** We avoided real brands and people, use reserved fictional 555 numbers, mask digit runs, send no real calls or SMS, and use no voice cloning.
+- **Words lie.** "Oh no! What do you need?" first counted as a refusal, and "I'm going to send you the money" looked like "I'm going (to hang up)". We normalise punctuation, narrow each pattern, resolve conflicting moves (a leak beats a refusal) and add a regression test for each case.
+- **When should you have hung up?** We use the first caller line with a critical ask (a code, a password, a payment) or enough stacked pressure. Staying on after it costs points.
+- **Safety.** No real brands or people, reserved 555 numbers, digit runs masked, no real calls or SMS, no voice cloning.
 
 ## Accomplishments we're proud of
-- It's fun. Getting scammed and then seeing the exact second it went wrong makes people want to replay.
-- The feedback is fully explainable: every flag points to the exact words that triggered it.
-- It works with no mic, no key and no account.
+- It's replayable: seeing the exact second it went wrong makes you want another round.
+- Feedback you can trust, because it's deterministic and every flag is explained.
+- Works with no mic, no key and no account, on desktop and phone.
 
 ## What we learned
-Scams share one structure: authority, then urgency, then secrecy, then an untraceable payment or a code. Once you can name the pattern, you notice it on the next call.
+Scam calls share one structure: authority, then urgency, then secrecy, then a code or an untraceable payment. Once you can name the pattern, you hear it on the next call.
 
 ## What's next
-Multilingual scenarios, spoken tones for grandparents (slower, larger text), a classroom mode with leaderboards for high-school digital-literacy classes, and user-submitted (moderated, fictionalised) scripts.
+More languages, a slower large-text mode for grandparents, a classroom mode for digital-literacy lessons, and moderated, fictionalised community scripts.
 
 ## Built with
 `typescript` · `vite` · `vitest` · `web-speech-api` · `web-audio-api` · `deapi` (Kokoro TTS, Whisper STT) · `github-pages` · `html5` · `css3`
@@ -61,7 +60,7 @@ Multilingual scenarios, spoken tones for grandparents (slower, larger text), a c
 ---
 
 ## Built during the hackathon (disclosure)
-- **Everything in this project was built during LovHack Season 3 (Sep 26 to Oct 4, 2026)** in a brand-new repository; the commit history starts on Sep 27, 2026. No code, designs or content come from earlier projects.
-- **Pre-existing, third-party pieces we used:** Vite, TypeScript and Vitest (open source, MIT); the browser Web Speech and Web Audio APIs; the deAPI hosted API (optional, for TTS/STT). Icons are hand-written inline SVG.
-- **AI assistance:** AI coding tools helped write and review code and copy, as the rules allow. I designed, understand and can demo every part of the project.
-- **Safety:** all callers, companies, numbers and details are fictional. The app never places calls or sends texts and uses no real personal data or voice cloning.
+- Built during LovHack Season 3 (Sep 26 to Oct 4, 2026) in a new repository; the commit history starts on Sep 27, 2026. No code, designs or content come from earlier projects.
+- Third-party pieces: Vite, TypeScript and Vitest (open source, MIT); the browser Web Speech and Web Audio APIs; the optional deAPI hosted API. Icons are hand-written inline SVG.
+- **AI assistance:** AI coding tools helped write, test and review code and copy, as the rules allow. I designed the project and can explain and demo every part of it.
+- **Safety:** all callers, companies, numbers and details are fictional. The app never places calls or sends texts, stores no personal data on a server, and uses no voice cloning.
