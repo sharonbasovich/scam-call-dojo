@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scam Call Dojo · Demo video</title>
+    <meta name="description" content="2:25 captioned demo of Scam Call Dojo, a flight simulator for scam phone calls." />
+    <style>
+      body { margin: 0; background: #0b1020; color: #e8ecf8; font: 16px/1.5 system-ui, sans-serif; }
+      main { max-width: 1000px; margin: 0 auto; padding: 32px 20px 48px; }
+      h1 { margin: 0 0 4px; font-size: 1.8rem; }
+      .tag { color: #ffc933; font-weight: 700; margin: 0 0 20px; }
+      video { width: 100%; height: auto; border-radius: 12px; background: #000; }
+      a { color: #8fb3ff; }
+      .muted { color: #a3aec8; }
+      details { margin-top: 20px; }
+      li { margin: 4px 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Scam Call Dojo: demo video</h1>
+      <p class="tag">Get scammed here, not out there.</p>
+      <video controls preload="metadata" playsinline width="1440" height="900" src="scam-call-dojo-demo.mp4" aria-describedby="about">
+        <a href="scam-call-dojo-demo.mp4">Download the demo video (MP4)</a>
+      </video>
+      <p id="about" class="muted">2:25 screen recording of the live app, with on-screen captions and no audio narration. Every caller, company, number and code shown is fictional.</p>
+      <p><a href="../">Try the live app</a> · <a href="scam-call-dojo-demo.mp4">Download MP4</a> · <a href="https://github.com/sharonbasovich/scam-call-dojo">Source code</a></p>
+      <details>
+        <summary>Caption text</summary>
+        <ol>
+          <li>Everyone knows: never read a bank code to a caller. So why do people still do it?</li>
+          <li>Because knowing the rule ≠ following it while someone rushes you. Scam Call Dojo: a flight simulator for scam calls.</li>
+          <li>Six fictional scam calls, white belt to black belt. Everything is made up; no real calls or texts.</li>
+          <li>Round 1: “The Frozen Account”. The phone rings…</li>
+          <li>“Daniel from the fraud department.” Coach mode underlines tactics live: Borrowed authority.</li>
+          <li>I play along…</li>
+          <li>Now he knows “my card” and wants a six-digit code. I’ll do what real victims do (with a fake code).</li>
+          <li>Scammed. 38/100, white belt.</li>
+          <li>The Call Autopsy pins the exact line where I should have hung up, and how long I stayed on after it.</li>
+          <li>Timestamped transcript: every flag shows the words that triggered it. My digits are masked.</li>
+          <li>The tell, plus a script to say next time. “Share with Grandma” copies a safety card.</li>
+          <li>Round 2: the one that targets students. A $45/h remote internship, no interview…</li>
+          <li>…just a small “starter fee”.</li>
+          <li>This time I verify independently. He adds pressure: a fee and a 30-minute deadline.</li>
+          <li>Survived. 97/100, black belt. He gave up.</li>
+          <li>Slip and the call closes in. Resist and the scammer escalates, then gives up.</li>
+          <li>Voice: text-only (captions, no mic needed), free browser voice, or deAPI: Kokoro preset voices + Whisper speech-to-text.</li>
+          <li>The deAPI key is yours, kept in this tab only. Preset voices; no voice cloning.</li>
+          <li>No LLM guessing: 23 deterministic rules + a branching call engine. Same input, same verdict. 42 tests run in CI before each deploy.</li>
+          <li>Get scammed here, not out there. sharonbasovich.github.io/scam-call-dojo</li>
+        </ol>
+      </details>
+    </main>
+  </body>
+</html>

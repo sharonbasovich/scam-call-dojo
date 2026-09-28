@@ -1,6 +1,8 @@
 # Devpost submission copy: Scam Call Dojo
 
-> Paste into the LovHack Season 3 project form. Fill in the video link after recording.
+> Paste into the LovHack Season 3 project form.
+>
+> **Pre-submission check for Sharon (delete before pasting):** the rules require participants to understand, present and demonstrate the project. Before submitting, personally review the live app, the demo video and every claim below, and edit anything you can't explain or stand behind. The video has captions only; if you add narration or re-record it, update the Video link.
 
 **Project name:** Scam Call Dojo
 
@@ -8,7 +10,7 @@
 
 **Elevator pitch (≤ 200 chars):** A flight simulator for scam phone calls. A fictional scammer calls you in the browser, you try to resist, and a Call Autopsy shows the exact second you should have hung up.
 
-**Demo:** https://sharonbasovich.github.io/scam-call-dojo/  ·  **Video:** [YouTube link, 2–3 min]  ·  **Code:** https://github.com/sharonbasovich/scam-call-dojo
+**Demo:** https://sharonbasovich.github.io/scam-call-dojo/  ·  **Video (2:25, captioned):** https://sharonbasovich.github.io/scam-call-dojo/demo/  ·  **Code:** https://github.com/sharonbasovich/scam-call-dojo
 
 ---
 
@@ -62,5 +64,5 @@ More languages, a slower large-text mode for grandparents, a classroom mode for 
 ## Built during the hackathon (disclosure)
 - Built during LovHack Season 3 (Sep 26 to Oct 4, 2026) in a new repository; the commit history starts on Sep 27, 2026. No code, designs or content come from earlier projects.
 - Third-party pieces: Vite, TypeScript and Vitest (open source, MIT); the browser Web Speech and Web Audio APIs; the optional deAPI hosted API. Icons are hand-written inline SVG.
-- **AI assistance:** AI coding tools helped write, test and review code and copy, as the rules allow. I designed the project and can explain and demo every part of it.
+- **AI assistance:** AI coding tools were used to write, test and review code and copy, as the rules allow. During submission prep, an AI agent (Devin) audited the app, fixed detector bugs, rewrote this write-up, and produced the screenshots and the demo video. The video is an automated, captioned screen recording of the live app with no voice narration.
 - **Safety:** all callers, companies, numbers and details are fictional. The app never places calls or sends texts, stores no personal data on a server, and uses no voice cloning.
