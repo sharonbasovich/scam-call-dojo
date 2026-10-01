@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Recorder } from '../src/voice/deapi';
 import { MicSession } from '../src/voice/micSession';
 
 class FakeTrack {
@@ -52,7 +51,7 @@ describe('MicSession two-tap flow', () => {
   it('tap one starts recording, tap two stops it and returns the blob to upload', async () => {
     const stream = new FakeStream();
     stubMedia(async () => stream);
-    const session = new MicSession(new Recorder(), yes, () => true);
+    const session = new MicSession(yes, () => true);
 
     expect(await session.tap()).toEqual({ action: 'started' });
     expect(session.recording).toBe(true);
@@ -71,7 +70,7 @@ describe('MicSession two-tap flow', () => {
       gumCalls += 1;
       return new FakeStream();
     });
-    const session = new MicSession(new Recorder(), no, () => true);
+    const session = new MicSession(no, () => true);
     expect(await session.tap()).toEqual({ action: 'idle' });
     expect(session.recording).toBe(false);
     expect(gumCalls).toBe(0);
@@ -86,7 +85,7 @@ describe('MicSession two-tap flow', () => {
       alive = false;
       return Promise.resolve(true);
     };
-    const session = new MicSession(new Recorder(), consent, () => alive);
+    const session = new MicSession(consent, () => alive);
     expect(await session.tap()).toEqual({ action: 'idle' });
     expect(session.recording).toBe(false);
   });
@@ -95,7 +94,7 @@ describe('MicSession two-tap flow', () => {
     const stream = new FakeStream();
     stubMedia(async () => stream);
     let aliveChecks = 0;
-    const session = new MicSession(new Recorder(), yes, () => {
+    const session = new MicSession(yes, () => {
       aliveChecks += 1;
       return aliveChecks === 1;
     });
@@ -108,7 +107,7 @@ describe('MicSession two-tap flow', () => {
     const stream = new FakeStream();
     stubMedia(async () => stream);
     let alive = true;
-    const session = new MicSession(new Recorder(), yes, () => alive);
+    const session = new MicSession(yes, () => alive);
 
     expect(await session.tap()).toEqual({ action: 'started' });
     alive = false;

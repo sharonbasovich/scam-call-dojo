@@ -4,19 +4,24 @@ export type MicTap = { action: 'started' } | { action: 'transcribe'; blob: Blob 
 
 /**
  * Two-tap mic state machine for a deAPI recording: tap one starts recording,
- * tap two stops it and yields the blob for transcription. Cancelling on
- * hang-up or call cleanup is a separate path — a tap never discards an
- * active recording.
+ * tap two stops it and yields the blob for transcription. The session owns
+ * its recorder for the whole call — cancel() is the single path every
+ * hang-up/cleanup goes through, so a recording can never be orphaned.
  */
 export class MicSession {
+  private readonly recorder = new Recorder();
+
   constructor(
-    private readonly recorder: Recorder,
     private readonly consent: () => Promise<boolean>,
     private readonly alive: () => boolean,
   ) {}
 
   get recording(): boolean {
     return this.recorder.recording;
+  }
+
+  cancel(): void {
+    this.recorder.cancel();
   }
 
   async tap(): Promise<MicTap> {

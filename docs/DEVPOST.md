@@ -31,7 +31,7 @@ Students are a major target: fake remote internships with a "starter fee", a "bo
 ## How we built it
 - **Vite + TypeScript** static site, no backend, no accounts, no analytics, deployed on GitHub Pages.
 - **Deterministic and explainable, no LLM in the loop.** 24 regex rules (with severity and a plain-language explanation) detect caller tactics and user moves. A `CallSession` state machine drives the scripted branching calls and `buildAutopsy()` scores them. Same input, same verdict, every time, and every flag points to the words that triggered it. It's a keyword heuristic, not language understanding: "verified independently" only counts when you name a source you already trust — "email me" or "I'll call you back" just defers to the caller's own channel and doesn't count.
-- **67 Vitest tests** run in CI before each deploy. They cover detection, false-positive guards ("Oh no!", "I have no idea" and "this isn't a scam, right?" are not refusals; "I'm going to send the money" is not a hang-up), first-reply leaks, redaction, branching, scoring and the deAPI request format.
+- **73 Vitest tests** run in CI before each deploy. They cover detection, false-positive guards ("Oh no!", "I have no idea" and "this isn't a scam, right?" are not refusals; "I'm going to send the money" is not a hang-up), first-reply leaks, redaction, branching, scoring and the deAPI request format.
 - **Accessible by default:** typing always works with no mic or key, every line is captioned, screen-reader live region, keyboard shortcuts (A answer / D decline), focus management, reduced motion, and a full-screen mobile layout.
 
 ## deAPI integration

@@ -224,7 +224,8 @@ let current: CallSession | null = null;
 let timerId: number | null = null;
 let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 let speakToken = 0;
-let recorder: Recorder | null = null;
+/** The current call's mic owner; cleanup cancels it, never orphans it. */
+let micSession: MicSession | null = null;
 let pendingConsent: ((ok: boolean) => void) | null = null;
 
 function setKeys(h: ((e: KeyboardEvent) => void) | null): void {
@@ -307,8 +308,7 @@ function setMicIdle(): void {
 /** Full teardown on hang-up/send/cleanup: playback plus the recorder itself. */
 function stopVoice(): void {
   stopPlayback();
-  recorder?.cancel();
-  recorder = null;
+  micSession?.cancel();
   setMicIdle();
 }
 
@@ -437,11 +437,11 @@ function inCall(call: CallSession): void {
 
   const mic = app.querySelector<HTMLButtonElement>('#mic');
   let micBusy = false;
-  const micSession = new MicSession(
-    recorder ?? (recorder = new Recorder()),
+  const session = new MicSession(
     () => ensureConsent('deapi'),
     () => call === current && !call.ended,
   );
+  micSession = session;
   mic?.addEventListener('click', async () => {
     if (micBusy || call.ended || call !== current) return;
     micBusy = true;
@@ -449,7 +449,7 @@ function inCall(call: CallSession): void {
     const useDeapi = settings.voice === 'deapi' && !!deapiKey();
     try {
       if (useDeapi) {
-        const tap = await micSession.tap();
+        const tap = await session.tap();
         if (tap.action === 'started') {
           mic.setAttribute('aria-pressed', 'true');
           mic.classList.add('rec');
@@ -461,7 +461,7 @@ function inCall(call: CallSession): void {
           if (call.ended || call !== current) return;
           notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
           if (text) await send(text);
-        } else if (call === current && !call.ended && !micSession.recording) {
+        } else if (call === current && !call.ended && !session.recording) {
           notice('deAPI voice not enabled — nothing was recorded or sent. Typing works.');
         }
       } else {
