@@ -111,6 +111,46 @@ describe('verification semantics', () => {
   it('negation in an earlier clause does not block a later safe move', () => {
     expect(ids("I don't share codes. I'll call the number on my card", 'user')).toContain('verify');
     expect(ids("Employers don't charge fees. This is a scam. Bye.", 'user')).toContain('refuse');
+    expect(ids('I never share codes so let me call my bank', 'user')).toContain('verify');
+    expect(ids("I won't share anything, but I will check with the office", 'user')).toContain('verify');
+  });
+  it('does not credit caller-side or reported verification', () => {
+    for (const t of [
+      'Can I ask your manager?',
+      "I'll check with you",
+      "What's your official number?",
+      'Send me the official website link',
+      "I'll verify the number you gave me",
+      "I'll hang up and call the number you gave me",
+      'He told me to call the number on my card',
+      'The caller said to check the official website',
+      'Call you back on this number',
+      "I'll call you back on the number you called from",
+    ]) {
+      const r = ids(t, 'user');
+      expect(r, t).not.toContain('verify');
+    }
+  });
+  it('flags caller-supplied channels as deferrals, and keeps trusted call-backs as verify', () => {
+    for (const t of ["I'll hang up and call the number you gave me", 'Can I ask your manager?', "I'll call you back on the number you called from"]) {
+      expect(ids(t, 'user'), t).toContain('defer-channel');
+    }
+    for (const t of ["I'll call you back on your old number", 'Call you back on the number I already have']) {
+      expect(ids(t, 'user'), t).toContain('verify');
+      expect(ids(t, 'user'), t).not.toContain('defer-channel');
+    }
+  });
+  it('refusing to take a safe action is not itself a refusal', () => {
+    for (const t of [
+      "I'm not going to call the number on the back of my card",
+      "I won't check with my bank",
+      "I'm not hanging up",
+      'I am not going to hang up',
+    ]) {
+      const r = ids(t, 'user');
+      expect(r, t).not.toContain('refuse');
+      expect(r, t).not.toContain('verify');
+    }
   });
 });
 
@@ -125,6 +165,12 @@ describe('helpers', () => {
     expect(isHangUpIntent("I won't hang up")).toBe(false);
     expect(isHangUpIntent("I'm going to send the money")).toBe(false);
     expect(isHangUpIntent("I'm going now")).toBe(true);
+  });
+  it('ignores negated, reported and unrelated click mentions of hanging up', () => {
+    for (const t of ["I'm not going to hang up", "I'm not hanging up", 'He told me to hang up', 'She said "hang up"', 'Which link do I click?']) {
+      expect(isHangUpIntent(t), t).toBe(false);
+    }
+    expect(isHangUpIntent("I can't take this. Bye.")).toBe(true);
   });
   it('has unique rule ids and at least 20 rules', () => {
     expect(new Set(RULES.map((r) => r.id)).size).toBe(RULES.length);

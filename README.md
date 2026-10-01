@@ -31,7 +31,7 @@ Built for students and their families. Try it on the scam before a real one reac
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 53 unit tests (Vitest)
+npm test           # 61 unit tests (Vitest)
 npm run typecheck
 npm run build      # static site in dist/
 ```

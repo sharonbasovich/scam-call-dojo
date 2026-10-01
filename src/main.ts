@@ -26,7 +26,7 @@ const app = document.getElementById('app') as HTMLElement;
 const live = document.getElementById('sr-live') as HTMLElement;
 
 function loadSettings(): Settings {
-  const fallback: Settings = { voice: canSpeakLocally() ? 'browser' : 'text', coach: true, speed: 1, consent: { browser: false, deapi: false } };
+  const fallback: Settings = { voice: 'text', coach: true, speed: 1, consent: { browser: false, deapi: false } };
   try {
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null') as Partial<Settings> | null;
     return { ...fallback, ...s, consent: { ...fallback.consent, ...(s?.consent ?? {}) } };
@@ -185,6 +185,7 @@ const CONSENT_COPY: Record<'browser' | 'deapi', { title: string; body: string; o
 /** Shows the mode-specific data warning once per mode and resolves whether the user opted in. */
 function ensureConsent(mode: 'browser' | 'deapi'): Promise<boolean> {
   if (settings.consent[mode]) return Promise.resolve(true);
+  pendingConsent?.(false);
   const copy = CONSENT_COPY[mode];
   return new Promise((resolve) => {
     const wrap = document.createElement('div');
@@ -197,6 +198,7 @@ function ensureConsent(mode: 'browser' | 'deapi'): Promise<boolean> {
     document.body.append(wrap);
     (wrap.querySelector('#consent-ok') as HTMLElement).focus();
     const done = (ok: boolean) => {
+      if (pendingConsent === done) pendingConsent = null;
       if (ok) {
         settings.consent[mode] = true;
         saveSettings();
@@ -204,10 +206,14 @@ function ensureConsent(mode: 'browser' | 'deapi'): Promise<boolean> {
       wrap.remove();
       resolve(ok);
     };
+    pendingConsent = done;
     wrap.querySelector('#consent-ok')?.addEventListener('click', () => done(true));
     wrap.querySelector('#consent-no')?.addEventListener('click', () => done(false));
     wrap.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') done(false);
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        done(false);
+      }
     });
   });
 }
@@ -218,6 +224,7 @@ let timerId: number | null = null;
 let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 let speakToken = 0;
 let recorder: Recorder | null = null;
+let pendingConsent: ((ok: boolean) => void) | null = null;
 
 function setKeys(h: ((e: KeyboardEvent) => void) | null): void {
   if (keyHandler) document.removeEventListener('keydown', keyHandler);
@@ -228,6 +235,7 @@ function setKeys(h: ((e: KeyboardEvent) => void) | null): void {
 function cleanupCall(): void {
   stopRing();
   stopVoice();
+  pendingConsent?.(false);
   if (timerId !== null) window.clearInterval(timerId);
   timerId = null;
   setKeys(null);
@@ -286,6 +294,8 @@ function stopVoice(): void {
   stopLocalSpeech();
   stopDeapiAudio();
   stopListening();
+  recorder?.cancel();
+  recorder = null;
 }
 
 async function speak(s: Scenario, text: string): Promise<void> {
@@ -295,15 +305,17 @@ async function speak(s: Scenario, text: string): Promise<void> {
   try {
     if (settings.voice === 'deapi' && deapiKey()) {
       if (!(await ensureConsent('deapi'))) {
-        notice('deAPI not enabled — using browser voice. Your audio is not sent to deAPI.');
+        if (token === speakToken) notice('deAPI not enabled — using browser voice. Your audio is not sent to deAPI.');
       } else try {
+        if (token !== speakToken) return;
         const blob = await deapiSpeech(deapiKey(), text.replace(/\*[^*]+\*/g, ''), s.voice.deapiVoice, Math.min(2, Math.max(0.5, settings.speed)));
         if (token === speakToken) await playBlob(blob);
         return;
       } catch (err) {
-        notice(`deAPI voice failed (${(err as Error).message}). Falling back to browser voice.`);
+        if (token === speakToken) notice(`deAPI voice failed (${(err as Error).message}). Falling back to browser voice.`);
       }
     }
+    if (token !== speakToken) return;
     if ((settings.voice === 'browser' || settings.voice === 'deapi') && canSpeakLocally()) {
       await speakLocally(text, { pitch: s.voice.pitch, rate: s.voice.rate * settings.speed });
     }
@@ -324,7 +336,7 @@ function notice(msg: string): void {
 function inCall(call: CallSession): void {
   stopRing();
   const s = call.scenario;
-  const micAvailable = settings.voice === 'deapi' && deapiKey() ? Recorder.supported() : canListenLocally();
+  const micAvailable = settings.voice === 'deapi' ? !!deapiKey() && Recorder.supported() : settings.voice === 'browser' && canListenLocally();
   const replies = [...s.quickReplies.risky.slice(0, 2), ...s.quickReplies.safe.slice(0, 1), s.quickReplies.risky[2], s.quickReplies.safe[1]].filter(Boolean);
   render(`${statusBar()}
     <div class="incall">
@@ -350,9 +362,14 @@ function inCall(call: CallSession): void {
     log.insertAdjacentHTML('beforeend', bubble(l, settings.coach));
     log.scrollTo({ top: log.scrollHeight, behavior: 'smooth' });
   };
+  let finished = false;
   const finish = () => {
+    if (finished || call !== current) return;
+    finished = true;
     stopVoice();
-    window.setTimeout(() => showAutopsy(call), 400);
+    window.setTimeout(() => {
+      if (call === current) showAutopsy(call);
+    }, 400);
   };
 
   timerId = window.setInterval(() => {
@@ -413,28 +430,38 @@ function inCall(call: CallSession): void {
     const useDeapi = settings.voice === 'deapi' && !!deapiKey();
     try {
       if (useDeapi) {
-        recorder = recorder ?? new Recorder();
-        if (!recorder.recording) {
+        const rec = recorder ?? new Recorder();
+        recorder = rec;
+        if (!rec.recording) {
           if (!(await ensureConsent('deapi'))) {
-            notice('deAPI voice not enabled — nothing was recorded or sent. Typing works.');
+            if (call === current && !call.ended) notice('deAPI voice not enabled — nothing was recorded or sent. Typing works.');
             return;
           }
           if (call.ended || call !== current) return;
-          await recorder.start();
+          await rec.start();
+          if (call.ended || call !== current) {
+            rec.cancel();
+            return;
+          }
           mic.setAttribute('aria-pressed', 'true');
           mic.classList.add('rec');
           notice('Recording… tap the mic again to send.');
           return;
         }
+        if (call.ended || call !== current) {
+          rec.cancel();
+          return;
+        }
         mic.setAttribute('aria-pressed', 'false');
         mic.classList.remove('rec');
         notice('Transcribing with deAPI Whisper…');
-        const text = await deapiTranscribe(deapiKey(), await recorder.stop());
+        const text = await deapiTranscribe(deapiKey(), await rec.stop());
+        if (call.ended || call !== current) return;
         notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
         if (text) await send(text);
       } else {
         if (!(await ensureConsent('browser'))) {
-          notice('Dictation not started — nothing was recorded or sent. Typing works.');
+          if (call === current && !call.ended) notice('Dictation not started — nothing was recorded or sent. Typing works.');
           return;
         }
         if (call.ended || call !== current) return;
@@ -442,6 +469,7 @@ function inCall(call: CallSession): void {
         mic.classList.add('rec');
         notice('Listening…');
         const text = await listenLocally();
+        if (call.ended || call !== current) return;
         mic.setAttribute('aria-pressed', 'false');
         mic.classList.remove('rec');
         notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
@@ -490,6 +518,7 @@ function showAutopsy(call: CallSession): void {
           <p class="outcome">${OUTCOME_LABEL[a.outcome]} · <span class="belt-chip belt-${a.belt}">${BELT_LABEL[a.belt]} belt</span></p>
           <p class="headline">${esc(a.headline)}</p>
           ${improved && a.outcome !== 'declined' ? '<p class="small pb">New personal best</p>' : ''}
+          <p class="muted small">Heuristic score: it counts pattern-matched safe and risky moves — useful training feedback, not a measure of real-world skill.</p>
         </div>
       </div>
       ${a.hangUpAt !== null ? `<div class="hang-callout"><strong>Hang-up moment: ${formatTime(a.hangUpAt)}</strong><p>“${esc(a.hangUpLine ?? '')}”</p>

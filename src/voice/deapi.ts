@@ -67,11 +67,17 @@ export function stopDeapiAudio(): void {
   currentAudio = null;
 }
 
-/** Push-to-talk recorder: call start(), then stop() resolves with the recorded audio. */
+/**
+ * Push-to-talk recorder: start(), then stop() resolves with the audio.
+ * cancel() ends any in-flight or pending capture — tracks stopped, chunks
+ * discarded — so a cancelled call can never leak its recording into another.
+ */
 export class Recorder {
   private rec: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private stream: MediaStream | null = null;
+  private generation = 0;
+  private pending: ((b: Blob | null) => void) | null = null;
 
   static supported(): boolean {
     return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
@@ -82,26 +88,63 @@ export class Recorder {
   }
 
   async start(): Promise<void> {
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const gen = ++this.generation;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (gen !== this.generation) {
+      stream.getTracks().forEach((t) => t.stop());
+      throw new DeapiError('Recording cancelled.');
+    }
+    this.stream = stream;
     this.chunks = [];
-    this.rec = new MediaRecorder(this.stream);
-    this.rec.ondataavailable = (e) => {
+    const rec = new MediaRecorder(stream);
+    this.rec = rec;
+    rec.ondataavailable = (e) => {
       if (e.data.size) this.chunks.push(e.data);
     };
-    this.rec.start();
+    rec.onstop = () => {
+      const blob = new Blob(this.chunks, { type: rec.mimeType || 'audio/webm' });
+      this.teardown();
+      const pending = this.pending;
+      this.pending = null;
+      pending?.(blob);
+    };
+    rec.start();
   }
 
   stop(): Promise<Blob> {
     const rec = this.rec;
-    if (!rec) return Promise.reject(new Error('Not recording'));
-    return new Promise((resolve) => {
-      rec.onstop = () => {
-        this.stream?.getTracks().forEach((t) => t.stop());
-        this.stream = null;
-        this.rec = null;
-        resolve(new Blob(this.chunks, { type: rec.mimeType || 'audio/webm' }));
+    if (!rec || rec.state === 'inactive') return Promise.reject(new DeapiError('Not recording'));
+    return new Promise((resolve, reject) => {
+      this.pending = (b) => {
+        if (b) resolve(b);
+        else reject(new DeapiError('Recording cancelled.'));
       };
       rec.stop();
     });
   }
+
+  cancel(): void {
+    this.generation += 1;
+    this.chunks = [];
+    const rec = this.rec;
+    const pending = this.pending;
+    this.pending = null;
+    if (rec && rec.state !== 'inactive') {
+      try {
+        rec.stop();
+      } catch {
+        // already stopping
+      }
+    }
+    this.teardown();
+    pending?.(null);
+  }
+
+  private teardown(): void {
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream = null;
+    this.rec = null;
+  }
 }
+
+
