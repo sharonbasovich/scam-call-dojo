@@ -16,6 +16,7 @@ const MOVE_POINTS: Record<string, number> = {
   'agree-pay': -35,
   'agree-secret': -15,
   comply: -8,
+  'defer-channel': -4,
   verify: 5,
   refuse: 3,
 };

@@ -9,13 +9,13 @@ Built for students and their families. Try it on the scam before a real one reac
 ## Features
 
 - **Six fictional scenarios**, white belt to black belt: The Frozen Account, The Dream Internship, The Boss in a Meeting, The Stuck Parcel, The Recovery Agent, The Family Emergency.
-- **Deterministic tactic detector.** 23 transparent rules cover caller tactics (urgency, authority, secrecy, payment rails, info harvest, emotion) and your moves (leaks, compliance, verifying, refusing). The same input always gives the same verdict, with no LLM involved.
+- **Deterministic tactic detector.** 24 transparent rules cover caller tactics (urgency, authority, secrecy, payment rails, info harvest, emotion) and your moves (leaks, compliance, verifying, refusing). The same input always gives the same verdict, with no LLM involved. It is a keyword heuristic, not language understanding: 'verified independently' only counts when you name a source you already trust (the number on your card, the official app, someone you know) — asking the caller to email you or call back scores as deferring to the caller's own channel instead.
 - **Branching call engine.** The scammer pushes back when you resist and pushes harder when you slip. The call ends when you hang up, stand firm twice, or give up a code or payment.
 - **Timestamped Call Autopsy.** Shows the score (0–100), belt, tactic counts, the hang-up moment, how long you stayed on the line after it, the tell and a safe script to use. A "Share with Grandma" safety card copies it to the clipboard.
 - **Accessible by default.** Text input always works, with no microphone needed. Includes keyboard shortcuts (A answer, D decline), a live region for screen readers, visible focus styles, reduced-motion support and a full mobile layout.
 - **Voice, three ways:**
   1. Text only (captions).
-  2. Browser voice: on-device `speechSynthesis` and `SpeechRecognition`. Free, with no key.
+  2. Browser voice: built-in `speechSynthesis` for the caller (usually on-device) and browser `SpeechRecognition` dictation for replies. Free, with no key. Dictation is opt-in: most browsers send recognition audio to their vendor's service (Chrome sends it to Google), so the app warns and asks before first use. Typing never sends anything.
   3. **deAPI**: Kokoro preset voices for the caller and Whisper Large V3 transcription for your replies. Bring your own key; it is kept in `sessionStorage` for that tab and sent only to deAPI. Because it lives in the browser, use a key you can revoke.
 
 ## Safety
@@ -24,14 +24,14 @@ Built for students and their families. Try it on the scam before a real one reac
 - The app never places calls or sends SMS. It has no backend and no analytics.
 - Runs of 4 or more digits you type or say are masked (`••••`) in the transcript.
 - The app uses deAPI's preset Kokoro voices only. It never uses voice cloning.
-- Nothing leaves the browser unless you enable deAPI. In that case only the caller's line (TTS) or your recorded reply (STT) is sent to `oai.deapi.ai`.
+- Typing and text-only mode send nothing anywhere. Browser dictation may send your audio to your browser vendor's recognition service; the app shows the warning and asks before starting it. With deAPI enabled, only the caller's line (TTS) or your recorded reply (STT) is sent to `oai.deapi.ai`, after an explicit opt-in.
 
 ## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 42 unit tests (Vitest)
+npm test           # 53 unit tests (Vitest)
 npm run typecheck
 npm run build      # static site in dist/
 ```

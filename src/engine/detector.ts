@@ -1,12 +1,29 @@
 import { RULES } from './rules';
 import type { Flag, Rule, Speaker } from './types';
 
-function firstMatch(rule: Rule, text: string): string | null {
+function firstMatch(rule: Rule, text: string): { evidence: string; index: number } | null {
   for (const re of rule.patterns) {
     const m = re.exec(text);
-    if (m) return m[0].trim();
+    if (m) return { evidence: m[0].trim(), index: m.index };
   }
   return null;
+}
+
+const CLAUSE_BOUNDARY = /[.!?;,]/;
+const NEGATOR = /\b(don'?t|do not|won'?t|will not|can'?t|cannot|couldn'?t|didn'?t|doesn'?t|ain'?t|never|not|no need(?: to)?)\b/i;
+const SAFE_MOVES = new Set(['verify', 'refuse']);
+
+/**
+ * Heuristic guard: a safe-looking phrase doesn't count when the user negated it
+ * in the same clause ("I can't call the bank") or is quoting someone else
+ * ('he said "call the number on your card"'). Regex can't prove intent, so this
+ * only removes obvious false positives rather than reasoning about language.
+ */
+function negatedOrQuoted(text: string, matchIndex: number): boolean {
+  const before = text.slice(0, matchIndex);
+  if ((before.match(/"/g) ?? []).length % 2 === 1) return true;
+  const clause = before.split(CLAUSE_BOUNDARY).pop() ?? '';
+  return NEGATOR.test(clause);
 }
 
 export function normalize(text: string): string {
@@ -19,8 +36,9 @@ export function detect(raw: string, side: Speaker, rules: Rule[] = RULES): Flag[
   const flags: Flag[] = [];
   for (const rule of rules) {
     if (rule.side !== side) continue;
-    const evidence = firstMatch(rule, text);
-    if (evidence === null) continue;
+    const match = firstMatch(rule, text);
+    if (match === null) continue;
+    if (rule.move && SAFE_MOVES.has(rule.move) && negatedOrQuoted(text, match.index)) continue;
     flags.push({
       ruleId: rule.id,
       label: rule.label,
@@ -28,7 +46,7 @@ export function detect(raw: string, side: Speaker, rules: Rule[] = RULES): Flag[
       category: rule.category,
       move: rule.move,
       severity: rule.severity,
-      evidence,
+      evidence: match.evidence,
       explain: rule.explain,
     });
   }

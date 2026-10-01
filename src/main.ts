@@ -14,6 +14,8 @@ interface Settings {
   voice: VoiceMode;
   coach: boolean;
   speed: number;
+  /** Per-mode opt-in, recorded only after the user sees the data warning. */
+  consent: { browser: boolean; deapi: boolean };
 }
 
 const SETTINGS_KEY = 'scd.settings.v1';
@@ -24,10 +26,10 @@ const app = document.getElementById('app') as HTMLElement;
 const live = document.getElementById('sr-live') as HTMLElement;
 
 function loadSettings(): Settings {
-  const fallback: Settings = { voice: canSpeakLocally() ? 'browser' : 'text', coach: true, speed: 1 };
+  const fallback: Settings = { voice: canSpeakLocally() ? 'browser' : 'text', coach: true, speed: 1, consent: { browser: false, deapi: false } };
   try {
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null') as Partial<Settings> | null;
-    return { ...fallback, ...s };
+    return { ...fallback, ...s, consent: { ...fallback.consent, ...(s?.consent ?? {}) } };
   } catch {
     return fallback;
   }
@@ -121,8 +123,9 @@ function settingsScreen(): void {
       <fieldset>
         <legend>Caller voice</legend>
         <label><input type="radio" name="voice" value="text" ${settings.voice === 'text' ? 'checked' : ''}/> Text only (captions, no audio)</label>
-        <label><input type="radio" name="voice" value="browser" ${settings.voice === 'browser' ? 'checked' : ''} ${canSpeakLocally() ? '' : 'disabled'}/> Browser voice (free, on-device)</label>
+        <label><input type="radio" name="voice" value="browser" ${settings.voice === 'browser' ? 'checked' : ''} ${canSpeakLocally() ? '' : 'disabled'}/> Browser voice (free, built-in voices)</label>
         <label><input type="radio" name="voice" value="deapi" ${settings.voice === 'deapi' ? 'checked' : ''}/> deAPI Kokoro voices + Whisper speech-to-text</label>
+        <p class="muted small">Caller speech uses your browser/OS voices — usually on-device. Mic dictation is <b>not</b> guaranteed to stay on this device: most browsers send the audio to their own speech service (Chrome sends it to Google). The app asks before using it, and typing always stays private.</p>
       </fieldset>
       <div class="deapi-box">
         <label for="key">deAPI API key <span class="muted">(kept in this tab only, sent only to oai.deapi.ai)</span></label>
@@ -133,7 +136,7 @@ function settingsScreen(): void {
       <label class="switch"><input type="checkbox" id="coach" ${settings.coach ? 'checked' : ''}/> Coach mode: show red flags live during the call</label>
       <label for="speed">Caller speaking speed <output id="speed-out">${settings.speed.toFixed(1)}×</output></label>
       <input id="speed" type="range" min="0.7" max="1.5" step="0.1" value="${settings.speed}" />
-      <p class="muted small">Microphone: ${canListenLocally() ? 'browser dictation available' : 'browser dictation not supported here'}${Recorder.supported() ? ', recording available for deAPI' : ''}. Typing always works.</p>
+      <p class="muted small">Microphone: ${canListenLocally() ? 'browser dictation available (opt-in, may send audio to your browser vendor)' : 'browser dictation not supported here'}${Recorder.supported() ? ', recording available for deAPI (opt-in, sent to oai.deapi.ai)' : ''}. Typing always works.</p>
       <button class="primary" id="done">Done</button>
     </div>`);
   app.querySelectorAll<HTMLInputElement>('input[name=voice]').forEach((r) =>
@@ -163,6 +166,50 @@ function settingsScreen(): void {
     settingsScreen();
   });
   app.querySelector('#done')?.addEventListener('click', home);
+}
+
+// ---------- Voice consent ----------
+const CONSENT_COPY: Record<'browser' | 'deapi', { title: string; body: string; ok: string }> = {
+  browser: {
+    title: 'Browser dictation may send audio off this device',
+    body: "Your browser's speech recognition is not guaranteed to run on-device — Chrome sends the audio to Google's servers and other browsers may do the same with their vendor's service. Typing is always fully private.",
+    ok: 'Use browser dictation',
+  },
+  deapi: {
+    title: 'deAPI sends audio to oai.deapi.ai',
+    body: 'In deAPI mode the caller’s lines are sent to oai.deapi.ai for speech synthesis, and your recorded reply is sent there for Whisper transcription. Nothing is sent in text-only mode.',
+    ok: 'Enable deAPI voice',
+  },
+};
+
+/** Shows the mode-specific data warning once per mode and resolves whether the user opted in. */
+function ensureConsent(mode: 'browser' | 'deapi'): Promise<boolean> {
+  if (settings.consent[mode]) return Promise.resolve(true);
+  const copy = CONSENT_COPY[mode];
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'consent';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.setAttribute('aria-label', copy.title);
+    wrap.innerHTML = `<div class="consent-card"><h3>${esc(copy.title)}</h3><p>${esc(copy.body)}</p>
+      <div class="row"><button class="primary" id="consent-ok">${esc(copy.ok)}</button><button class="ghost" id="consent-no">Keep typing</button></div></div>`;
+    document.body.append(wrap);
+    (wrap.querySelector('#consent-ok') as HTMLElement).focus();
+    const done = (ok: boolean) => {
+      if (ok) {
+        settings.consent[mode] = true;
+        saveSettings();
+      }
+      wrap.remove();
+      resolve(ok);
+    };
+    wrap.querySelector('#consent-ok')?.addEventListener('click', () => done(true));
+    wrap.querySelector('#consent-no')?.addEventListener('click', () => done(false));
+    wrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') done(false);
+    });
+  });
 }
 
 // ---------- Ringing ----------
@@ -222,7 +269,7 @@ function ring(s: Scenario): void {
 function flagChips(flags: Flag[]): string {
   return flags
     .map((f) => {
-      const tone = f.side === 'caller' ? `tac-${f.category}` : f.move === 'verify' || f.move === 'refuse' ? 'good' : 'bad';
+      const tone = f.side === 'caller' ? `tac-${f.category}` : f.move === 'verify' || f.move === 'refuse' ? 'good' : f.move === 'defer' ? 'warn' : 'bad';
       return `<span class="chip ${tone}">${esc(f.label)}</span>`;
     })
     .join('');
@@ -247,7 +294,9 @@ async function speak(s: Scenario, text: string): Promise<void> {
   ind?.classList.add('on');
   try {
     if (settings.voice === 'deapi' && deapiKey()) {
-      try {
+      if (!(await ensureConsent('deapi'))) {
+        notice('deAPI not enabled — using browser voice. Your audio is not sent to deAPI.');
+      } else try {
         const blob = await deapiSpeech(deapiKey(), text.replace(/\*[^*]+\*/g, ''), s.voice.deapiVoice, Math.min(2, Math.max(0.5, settings.speed)));
         if (token === speakToken) await playBlob(blob);
         return;
@@ -317,7 +366,7 @@ function inCall(call: CallSession): void {
 
   let busy = false;
   const send = async (text: string) => {
-    if (busy || call.ended || !text.trim()) return;
+    if (busy || call.ended || call !== current || !text.trim()) return;
     busy = true;
     stopVoice();
     input.value = '';
@@ -356,13 +405,21 @@ function inCall(call: CallSession): void {
   });
 
   const mic = app.querySelector<HTMLButtonElement>('#mic');
+  let micBusy = false;
   mic?.addEventListener('click', async () => {
+    if (micBusy || call.ended || call !== current) return;
+    micBusy = true;
     stopVoice();
     const useDeapi = settings.voice === 'deapi' && !!deapiKey();
     try {
       if (useDeapi) {
         recorder = recorder ?? new Recorder();
         if (!recorder.recording) {
+          if (!(await ensureConsent('deapi'))) {
+            notice('deAPI voice not enabled — nothing was recorded or sent. Typing works.');
+            return;
+          }
+          if (call.ended || call !== current) return;
           await recorder.start();
           mic.setAttribute('aria-pressed', 'true');
           mic.classList.add('rec');
@@ -376,6 +433,11 @@ function inCall(call: CallSession): void {
         notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
         if (text) await send(text);
       } else {
+        if (!(await ensureConsent('browser'))) {
+          notice('Dictation not started — nothing was recorded or sent. Typing works.');
+          return;
+        }
+        if (call.ended || call !== current) return;
         mic.setAttribute('aria-pressed', 'true');
         mic.classList.add('rec');
         notice('Listening…');
@@ -389,6 +451,8 @@ function inCall(call: CallSession): void {
       mic.setAttribute('aria-pressed', 'false');
       mic.classList.remove('rec');
       notice(`${(err as Error).message} You can always type instead.`);
+    } finally {
+      micBusy = false;
     }
   });
 }

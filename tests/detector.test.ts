@@ -67,9 +67,50 @@ describe('user move edge cases', () => {
     expect(ids("This isn't a scam, right?", 'user')).not.toContain('refuse');
     expect(ids('Not a chance', 'user')).toContain('refuse');
   });
-  it('credits checking with family or asking for it in writing', () => {
+  it('credits checking with a trusted person, but not caller-controlled channels', () => {
     expect(ids('Hold on, let me call my dad', 'user')).toContain('verify');
-    expect(ids('Can you email me instead?', 'user')).toContain('verify');
+    expect(ids('Can you email me instead?', 'user')).toContain('defer-channel');
+    expect(ids('Can you email me instead?', 'user')).not.toContain('verify');
+  });
+});
+
+describe('verification semantics', () => {
+  it('does not credit caller-controlled channels as independent verification', () => {
+    for (const t of ['Email me', 'Call you back', "I'll call back", 'Send me a text', 'Put it in writing', "What's your number?", 'Send me the link', 'Text it to me']) {
+      const r = ids(t, 'user');
+      expect(r, t).toContain('defer-channel');
+      expect(r, t).not.toContain('verify');
+    }
+  });
+  it('still credits trusted-source verification and known-number call-backs', () => {
+    for (const t of [
+      "I'll call the number on the back of my card",
+      "I'll call you back on your old number",
+      "I'm going to call you back on your usual number",
+      "I'll check with the office first",
+      'Let me verify this on the official website',
+      "I'll contact my exchange through the official app",
+      'Hang up and call the number on my card',
+      'Let me look it up myself',
+      "I'll ask my mom",
+      'I will call the bank on the number I have',
+    ]) expect(ids(t, 'user'), t).toContain('verify');
+  });
+  it('does not count negated or quoted safe phrases', () => {
+    for (const t of [
+      "I can't call the number on my card",
+      "I won't check with my bank",
+      "I'm not going to verify anything",
+      "This isn't a scam, I'm not calling anyone",
+      "I never call back",
+      'He said "call the number on your card"',
+      'The script says "hang up and call the bank"',
+    ]) expect(ids(t, 'user'), t).not.toContain('verify');
+    for (const t of ["I can't say this is a scam", "I'm not saying no"]) expect(ids(t, 'user'), t).not.toContain('refuse');
+  });
+  it('negation in an earlier clause does not block a later safe move', () => {
+    expect(ids("I don't share codes. I'll call the number on my card", 'user')).toContain('verify');
+    expect(ids("Employers don't charge fees. This is a scam. Bye.", 'user')).toContain('refuse');
   });
 });
 

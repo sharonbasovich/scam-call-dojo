@@ -24,14 +24,14 @@ Students are a major target: fake remote internships with a "starter fee", a "bo
 
 ## What it does
 1. **A fictional scam call rings.** Six scenarios, white belt to black belt: The Frozen Account, The Dream Internship, The Boss in a Meeting, The Stuck Parcel, The Recovery Agent, The Family Emergency.
-2. **You respond.** Type, tap a quick reply, or talk (browser dictation or deAPI Whisper). The caller speaks through browser voice or a deAPI Kokoro preset voice. The call branches: resist and he escalates; slip and he closes in. Read out a code or agree to pay and the call ends as **Scammed**.
+2. **You respond.** Type, tap a quick reply, or talk (browser dictation or deAPI Whisper, both opt-in with a data warning first — browser dictation may send audio to the browser vendor's service, and typing always stays private). The caller speaks through browser voice or a deAPI Kokoro preset voice. The call branches: resist and he escalates; slip and he closes in. Read out a code or agree to pay and the call ends as **Scammed**.
 3. **Coach mode** (optional) underlines red flags live: *Fake deadline*, *Borrowed authority*, *Asks for a one-time code*, *Untraceable payment*.
 4. **The Call Autopsy:** a Resistance Score and belt, the timestamped **hang-up moment** and how long you stayed on after it, tactic counts, your good and risky moves, the masked transcript with trigger words highlighted, **the tell**, a **"Say this instead"** script, and a copyable **Share with Grandma** safety card.
 
 ## How we built it
 - **Vite + TypeScript** static site, no backend, no accounts, no analytics, deployed on GitHub Pages.
-- **Deterministic and explainable, no LLM in the loop.** 23 regex rules (with severity and a plain-language explanation) detect caller tactics and user moves. A `CallSession` state machine drives the scripted branching calls and `buildAutopsy()` scores them. Same input, same verdict, every time, and every flag points to the words that triggered it.
-- **42 Vitest tests** run in CI before each deploy. They cover detection, false-positive guards ("Oh no!", "I have no idea" and "this isn't a scam, right?" are not refusals; "I'm going to send the money" is not a hang-up), first-reply leaks, redaction, branching, scoring and the deAPI request format.
+- **Deterministic and explainable, no LLM in the loop.** 24 regex rules (with severity and a plain-language explanation) detect caller tactics and user moves. A `CallSession` state machine drives the scripted branching calls and `buildAutopsy()` scores them. Same input, same verdict, every time, and every flag points to the words that triggered it. It's a keyword heuristic, not language understanding: "verified independently" only counts when you name a source you already trust — "email me" or "I'll call you back" just defers to the caller's own channel and doesn't count.
+- **53 Vitest tests** run in CI before each deploy. They cover detection, false-positive guards ("Oh no!", "I have no idea" and "this isn't a scam, right?" are not refusals; "I'm going to send the money" is not a hang-up), first-reply leaks, redaction, branching, scoring and the deAPI request format.
 - **Accessible by default:** typing always works with no mic or key, every line is captioned, screen-reader live region, keyboard shortcuts (A answer / D decline), focus management, reduced motion, and a full-screen mobile layout.
 
 ## deAPI integration

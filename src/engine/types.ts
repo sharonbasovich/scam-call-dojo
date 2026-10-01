@@ -8,7 +8,7 @@ export type TacticCategory =
   | 'harvest'
   | 'emotion';
 
-export type UserMoveKind = 'leak' | 'comply' | 'secrecy-agree' | 'verify' | 'refuse';
+export type UserMoveKind = 'leak' | 'comply' | 'secrecy-agree' | 'verify' | 'refuse' | 'defer';
 
 export interface Rule {
   id: string;
