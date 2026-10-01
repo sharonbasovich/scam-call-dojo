@@ -80,6 +80,22 @@ describe('call session', () => {
     expect(buildAutopsy(call).score).toBeGreaterThanOrEqual(85);
   });
 
+  it('does not credit caller-channel deflections as verification (the "Email me" / "Call you back" exploit)', () => {
+    const call = new CallSession(getScenario('bank'), fakeClock());
+    call.answer();
+    expect(call.respond('Email me').ended).toBe(false);
+    expect(call.respond('Call you back').ended).toBe(false);
+    expect(call.outcome).toBeNull();
+    const moves = call.transcript.filter((l) => l.speaker === 'user').flatMap((l) => l.flags);
+    expect(moves.some((f) => f.move === 'verify')).toBe(false);
+    expect(moves.every((f) => f.label !== 'Verified independently')).toBe(true);
+    expect(moves.filter((f) => f.ruleId === 'defer-channel')).toHaveLength(2);
+    call.hangUp();
+    const a = buildAutopsy(call);
+    expect(a.outcome).toBe('hung-up');
+    expect(a.score).toBeLessThan(95);
+  });
+
   it('uses exploit branch after compliance', () => {
     const call = new CallSession(getScenario('boss'), fakeClock());
     call.answer();

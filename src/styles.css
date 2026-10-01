@@ -88,7 +88,13 @@ h3 { margin: 22px 0 8px; font-size: 1rem; color: var(--accent); }
 .chip { font-size: .68rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: #0005; border: 1px solid currentColor; }
 .tac-urgency { color: var(--urgency); } .tac-authority { color: var(--authority); } .tac-secrecy { color: var(--secrecy); }
 .tac-payment { color: var(--payment); } .tac-harvest { color: var(--harvest); } .tac-emotion { color: var(--emotion); }
-.chip.good { color: var(--good); } .chip.bad { color: #ff8a95; }
+.chip.good { color: var(--good); } .chip.bad { color: #ff8a95; } .chip.warn { color: #f5c76b; }
+.consent { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #000a; padding: 16px; }
+.consent-card { max-width: 340px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.consent-card h3 { margin: 0 0 8px; }
+.consent-card p { color: var(--muted); font-size: .85rem; }
+.consent-card .row { display: flex; gap: 8px; margin-top: 14px; }
+.consent-card .primary { flex: 1; }
 mark { background: transparent; color: inherit; border-bottom: 2px solid currentColor; padding: 0 1px; }
 mark[class^='tac-'] { color: inherit; border-color: var(--c, currentColor); }
 mark.tac-urgency { --c: var(--urgency); } mark.tac-authority { --c: var(--authority); } mark.tac-secrecy { --c: var(--secrecy); }

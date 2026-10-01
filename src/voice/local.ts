@@ -65,7 +65,13 @@ export function listenLocally(): Promise<string> {
     r.onresult = (e) => {
       heard = Array.from(e.results).map((res) => res[0].transcript).join(' ');
     };
-    r.onerror = (e) => reject(new Error(e.error === 'not-allowed' ? 'Microphone permission was denied.' : `Speech recognition error: ${e.error}`));
+    r.onerror = (e) => {
+      if (e.error === 'aborted' || e.error === 'no-speech') {
+        resolve('');
+        return;
+      }
+      reject(new Error(e.error === 'not-allowed' ? 'Microphone permission was denied.' : `Speech recognition error: ${e.error}`));
+    };
     r.onend = () => {
       active = null;
       resolve(heard.trim());
@@ -75,5 +81,5 @@ export function listenLocally(): Promise<string> {
 }
 
 export function stopListening(): void {
-  active?.stop();
+  active?.abort();
 }

@@ -4,6 +4,7 @@ import { CallSession } from './engine/call';
 import { SCENARIOS, getScenario } from './engine/scenarios';
 import type { Autopsy, Belt, Flag, Scenario, TacticCategory, TranscriptLine } from './engine/types';
 import { Recorder, deapiSpeech, deapiTranscribe, playBlob, stopDeapiAudio } from './voice/deapi';
+import { MicSession } from './voice/micSession';
 import { canListenLocally, canSpeakLocally, listenLocally, speakLocally, stopListening, stopLocalSpeech } from './voice/local';
 import { esc, highlight } from './ui/highlight';
 import { ICONS } from './ui/icons';
@@ -14,6 +15,8 @@ interface Settings {
   voice: VoiceMode;
   coach: boolean;
   speed: number;
+  /** Per-mode opt-in, recorded only after the user sees the data warning. */
+  consent: { browser: boolean; deapi: boolean };
 }
 
 const SETTINGS_KEY = 'scd.settings.v1';
@@ -24,10 +27,10 @@ const app = document.getElementById('app') as HTMLElement;
 const live = document.getElementById('sr-live') as HTMLElement;
 
 function loadSettings(): Settings {
-  const fallback: Settings = { voice: canSpeakLocally() ? 'browser' : 'text', coach: true, speed: 1 };
+  const fallback: Settings = { voice: 'text', coach: true, speed: 1, consent: { browser: false, deapi: false } };
   try {
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null') as Partial<Settings> | null;
-    return { ...fallback, ...s };
+    return { ...fallback, ...s, consent: { ...fallback.consent, ...(s?.consent ?? {}) } };
   } catch {
     return fallback;
   }
@@ -121,8 +124,9 @@ function settingsScreen(): void {
       <fieldset>
         <legend>Caller voice</legend>
         <label><input type="radio" name="voice" value="text" ${settings.voice === 'text' ? 'checked' : ''}/> Text only (captions, no audio)</label>
-        <label><input type="radio" name="voice" value="browser" ${settings.voice === 'browser' ? 'checked' : ''} ${canSpeakLocally() ? '' : 'disabled'}/> Browser voice (free, on-device)</label>
+        <label><input type="radio" name="voice" value="browser" ${settings.voice === 'browser' ? 'checked' : ''} ${canSpeakLocally() ? '' : 'disabled'}/> Browser voice (free, built-in voices)</label>
         <label><input type="radio" name="voice" value="deapi" ${settings.voice === 'deapi' ? 'checked' : ''}/> deAPI Kokoro voices + Whisper speech-to-text</label>
+        <p class="muted small">Caller speech uses your browser/OS voices — usually on-device. Mic dictation is <b>not</b> guaranteed to stay on this device: most browsers send the audio to their own speech service (Chrome sends it to Google). The app asks before using it, and typing always stays private.</p>
       </fieldset>
       <div class="deapi-box">
         <label for="key">deAPI API key <span class="muted">(kept in this tab only, sent only to oai.deapi.ai)</span></label>
@@ -133,7 +137,7 @@ function settingsScreen(): void {
       <label class="switch"><input type="checkbox" id="coach" ${settings.coach ? 'checked' : ''}/> Coach mode: show red flags live during the call</label>
       <label for="speed">Caller speaking speed <output id="speed-out">${settings.speed.toFixed(1)}×</output></label>
       <input id="speed" type="range" min="0.7" max="1.5" step="0.1" value="${settings.speed}" />
-      <p class="muted small">Microphone: ${canListenLocally() ? 'browser dictation available' : 'browser dictation not supported here'}${Recorder.supported() ? ', recording available for deAPI' : ''}. Typing always works.</p>
+      <p class="muted small">Microphone: ${canListenLocally() ? 'browser dictation available (opt-in, may send audio to your browser vendor)' : 'browser dictation not supported here'}${Recorder.supported() ? ', recording available for deAPI (opt-in, sent to oai.deapi.ai)' : ''}. Typing always works.</p>
       <button class="primary" id="done">Done</button>
     </div>`);
   app.querySelectorAll<HTMLInputElement>('input[name=voice]').forEach((r) =>
@@ -165,12 +169,64 @@ function settingsScreen(): void {
   app.querySelector('#done')?.addEventListener('click', home);
 }
 
+// ---------- Voice consent ----------
+const CONSENT_COPY: Record<'browser' | 'deapi', { title: string; body: string; ok: string }> = {
+  browser: {
+    title: 'Browser dictation may send audio off this device',
+    body: "Your browser's speech recognition is not guaranteed to run on-device — Chrome sends the audio to Google's servers and other browsers may do the same with their vendor's service. Typing is always fully private.",
+    ok: 'Use browser dictation',
+  },
+  deapi: {
+    title: 'deAPI sends audio to oai.deapi.ai',
+    body: 'In deAPI mode the caller’s lines are sent to oai.deapi.ai for speech synthesis, and your recorded reply is sent there for Whisper transcription. Nothing is sent in text-only mode.',
+    ok: 'Enable deAPI voice',
+  },
+};
+
+/** Shows the mode-specific data warning once per mode and resolves whether the user opted in. */
+function ensureConsent(mode: 'browser' | 'deapi'): Promise<boolean> {
+  if (settings.consent[mode]) return Promise.resolve(true);
+  pendingConsent?.(false);
+  const copy = CONSENT_COPY[mode];
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'consent';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.setAttribute('aria-label', copy.title);
+    wrap.innerHTML = `<div class="consent-card"><h3>${esc(copy.title)}</h3><p>${esc(copy.body)}</p>
+      <div class="row"><button class="primary" id="consent-ok">${esc(copy.ok)}</button><button class="ghost" id="consent-no">Keep typing</button></div></div>`;
+    document.body.append(wrap);
+    (wrap.querySelector('#consent-ok') as HTMLElement).focus();
+    const done = (ok: boolean) => {
+      if (pendingConsent === done) pendingConsent = null;
+      if (ok) {
+        settings.consent[mode] = true;
+        saveSettings();
+      }
+      wrap.remove();
+      resolve(ok);
+    };
+    pendingConsent = done;
+    wrap.querySelector('#consent-ok')?.addEventListener('click', () => done(true));
+    wrap.querySelector('#consent-no')?.addEventListener('click', () => done(false));
+    wrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        done(false);
+      }
+    });
+  });
+}
+
 // ---------- Ringing ----------
 let current: CallSession | null = null;
 let timerId: number | null = null;
 let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 let speakToken = 0;
-let recorder: Recorder | null = null;
+/** The current call's mic owner; cleanup cancels it, never orphans it. */
+let micSession: MicSession | null = null;
+let pendingConsent: ((ok: boolean) => void) | null = null;
 
 function setKeys(h: ((e: KeyboardEvent) => void) | null): void {
   if (keyHandler) document.removeEventListener('keydown', keyHandler);
@@ -181,6 +237,7 @@ function setKeys(h: ((e: KeyboardEvent) => void) | null): void {
 function cleanupCall(): void {
   stopRing();
   stopVoice();
+  pendingConsent?.(false);
   if (timerId !== null) window.clearInterval(timerId);
   timerId = null;
   setKeys(null);
@@ -222,7 +279,7 @@ function ring(s: Scenario): void {
 function flagChips(flags: Flag[]): string {
   return flags
     .map((f) => {
-      const tone = f.side === 'caller' ? `tac-${f.category}` : f.move === 'verify' || f.move === 'refuse' ? 'good' : 'bad';
+      const tone = f.side === 'caller' ? `tac-${f.category}` : f.move === 'verify' || f.move === 'refuse' ? 'good' : f.move === 'defer' ? 'warn' : 'bad';
       return `<span class="chip ${tone}">${esc(f.label)}</span>`;
     })
     .join('');
@@ -234,11 +291,25 @@ function bubble(l: TranscriptLine, coach: boolean): string {
     ${coach && l.flags.length ? `<div class="chips">${flagChips(l.flags)}</div>` : ''}<time>${formatTime(l.t)}</time></li>`;
 }
 
-function stopVoice(): void {
+/** Stops caller playback and dictation; leaves any user recording untouched. */
+function stopPlayback(): void {
   speakToken += 1;
   stopLocalSpeech();
   stopDeapiAudio();
   stopListening();
+}
+
+function setMicIdle(): void {
+  const m = app.querySelector<HTMLButtonElement>('#mic');
+  m?.setAttribute('aria-pressed', 'false');
+  m?.classList.remove('rec');
+}
+
+/** Full teardown on hang-up/send/cleanup: playback plus the recorder itself. */
+function stopVoice(): void {
+  stopPlayback();
+  micSession?.cancel();
+  setMicIdle();
 }
 
 async function speak(s: Scenario, text: string): Promise<void> {
@@ -247,14 +318,18 @@ async function speak(s: Scenario, text: string): Promise<void> {
   ind?.classList.add('on');
   try {
     if (settings.voice === 'deapi' && deapiKey()) {
-      try {
+      if (!(await ensureConsent('deapi'))) {
+        if (token === speakToken) notice('deAPI not enabled — using browser voice. Your audio is not sent to deAPI.');
+      } else try {
+        if (token !== speakToken) return;
         const blob = await deapiSpeech(deapiKey(), text.replace(/\*[^*]+\*/g, ''), s.voice.deapiVoice, Math.min(2, Math.max(0.5, settings.speed)));
         if (token === speakToken) await playBlob(blob);
         return;
       } catch (err) {
-        notice(`deAPI voice failed (${(err as Error).message}). Falling back to browser voice.`);
+        if (token === speakToken) notice(`deAPI voice failed (${(err as Error).message}). Falling back to browser voice.`);
       }
     }
+    if (token !== speakToken) return;
     if ((settings.voice === 'browser' || settings.voice === 'deapi') && canSpeakLocally()) {
       await speakLocally(text, { pitch: s.voice.pitch, rate: s.voice.rate * settings.speed });
     }
@@ -275,7 +350,7 @@ function notice(msg: string): void {
 function inCall(call: CallSession): void {
   stopRing();
   const s = call.scenario;
-  const micAvailable = settings.voice === 'deapi' && deapiKey() ? Recorder.supported() : canListenLocally();
+  const micAvailable = settings.voice === 'deapi' ? !!deapiKey() && Recorder.supported() : settings.voice === 'browser' && canListenLocally();
   const replies = [...s.quickReplies.risky.slice(0, 2), ...s.quickReplies.safe.slice(0, 1), s.quickReplies.risky[2], s.quickReplies.safe[1]].filter(Boolean);
   render(`${statusBar()}
     <div class="incall">
@@ -301,9 +376,14 @@ function inCall(call: CallSession): void {
     log.insertAdjacentHTML('beforeend', bubble(l, settings.coach));
     log.scrollTo({ top: log.scrollHeight, behavior: 'smooth' });
   };
+  let finished = false;
   const finish = () => {
+    if (finished || call !== current) return;
+    finished = true;
     stopVoice();
-    window.setTimeout(() => showAutopsy(call), 400);
+    window.setTimeout(() => {
+      if (call === current) showAutopsy(call);
+    }, 400);
   };
 
   timerId = window.setInterval(() => {
@@ -317,7 +397,7 @@ function inCall(call: CallSession): void {
 
   let busy = false;
   const send = async (text: string) => {
-    if (busy || call.ended || !text.trim()) return;
+    if (busy || call.ended || call !== current || !text.trim()) return;
     busy = true;
     stopVoice();
     input.value = '';
@@ -356,39 +436,54 @@ function inCall(call: CallSession): void {
   });
 
   const mic = app.querySelector<HTMLButtonElement>('#mic');
+  let micBusy = false;
+  const session = new MicSession(
+    () => ensureConsent('deapi'),
+    () => call === current && !call.ended,
+  );
+  micSession = session;
   mic?.addEventListener('click', async () => {
-    stopVoice();
+    if (micBusy || call.ended || call !== current) return;
+    micBusy = true;
+    stopPlayback();
     const useDeapi = settings.voice === 'deapi' && !!deapiKey();
     try {
       if (useDeapi) {
-        recorder = recorder ?? new Recorder();
-        if (!recorder.recording) {
-          await recorder.start();
+        const tap = await session.tap();
+        if (tap.action === 'started') {
           mic.setAttribute('aria-pressed', 'true');
           mic.classList.add('rec');
           notice('Recording… tap the mic again to send.');
+        } else if (tap.action === 'transcribe') {
+          setMicIdle();
+          notice('Transcribing with deAPI Whisper…');
+          const text = await deapiTranscribe(deapiKey(), tap.blob);
+          if (call.ended || call !== current) return;
+          notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
+          if (text) await send(text);
+        } else if (call === current && !call.ended && !session.recording) {
+          notice('deAPI voice not enabled — nothing was recorded or sent. Typing works.');
+        }
+      } else {
+        if (!(await ensureConsent('browser'))) {
+          if (call === current && !call.ended) notice('Dictation not started — nothing was recorded or sent. Typing works.');
           return;
         }
-        mic.setAttribute('aria-pressed', 'false');
-        mic.classList.remove('rec');
-        notice('Transcribing with deAPI Whisper…');
-        const text = await deapiTranscribe(deapiKey(), await recorder.stop());
-        notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
-        if (text) await send(text);
-      } else {
+        if (call.ended || call !== current) return;
         mic.setAttribute('aria-pressed', 'true');
         mic.classList.add('rec');
         notice('Listening…');
         const text = await listenLocally();
-        mic.setAttribute('aria-pressed', 'false');
-        mic.classList.remove('rec');
+        if (call.ended || call !== current) return;
+        setMicIdle();
         notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
         if (text) await send(text);
       }
     } catch (err) {
-      mic.setAttribute('aria-pressed', 'false');
-      mic.classList.remove('rec');
+      setMicIdle();
       notice(`${(err as Error).message} You can always type instead.`);
+    } finally {
+      micBusy = false;
     }
   });
 }
@@ -426,6 +521,7 @@ function showAutopsy(call: CallSession): void {
           <p class="outcome">${OUTCOME_LABEL[a.outcome]} · <span class="belt-chip belt-${a.belt}">${BELT_LABEL[a.belt]} belt</span></p>
           <p class="headline">${esc(a.headline)}</p>
           ${improved && a.outcome !== 'declined' ? '<p class="small pb">New personal best</p>' : ''}
+          <p class="muted small">Heuristic score: it counts pattern-matched safe and risky moves — useful training feedback, not a measure of real-world skill.</p>
         </div>
       </div>
       ${a.hangUpAt !== null ? `<div class="hang-callout"><strong>Hang-up moment: ${formatTime(a.hangUpAt)}</strong><p>“${esc(a.hangUpLine ?? '')}”</p>

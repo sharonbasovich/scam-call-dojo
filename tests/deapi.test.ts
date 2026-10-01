@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { DEAPI_BASE, DeapiError, deapiSpeech, deapiTranscribe } from '../src/voice/deapi';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEAPI_BASE, DeapiError, Recorder, deapiSpeech, deapiTranscribe } from '../src/voice/deapi';
 
 type Call = { url: string; init: RequestInit };
 
@@ -33,5 +33,104 @@ describe('deAPI adapter', () => {
   it('surfaces API error messages', async () => {
     const res = Response.json({ error: { message: 'Invalid token', code: 'unauthorized' } }, { status: 401 });
     await expect(deapiSpeech('bad', 'hi', 'af_nova', 1, mockFetch(res, []))).rejects.toThrow(DeapiError);
+  });
+});
+
+// ---- Recorder lifecycle (mocked getUserMedia + MediaRecorder) ----
+
+class FakeTrack {
+  stopped = false;
+  stop(): void {
+    this.stopped = true;
+  }
+}
+
+class FakeStream {
+  tracks = [new FakeTrack(), new FakeTrack()];
+  getTracks(): FakeTrack[] {
+    return this.tracks;
+  }
+}
+
+class FakeRecorder {
+  static instances: FakeRecorder[] = [];
+  state: 'inactive' | 'recording' = 'inactive';
+  mimeType = 'audio/webm';
+  ondataavailable: ((e: { data: Blob }) => void) | null = null;
+  onstop: (() => void) | null = null;
+  constructor() {
+    FakeRecorder.instances.push(this);
+  }
+  start(): void {
+    this.state = 'recording';
+  }
+  stop(): void {
+    if (this.state === 'inactive') throw new Error('InvalidStateError');
+    this.state = 'inactive';
+    queueMicrotask(() => this.onstop?.());
+  }
+}
+
+function stubMedia(getUserMedia: () => Promise<FakeStream>): void {
+  FakeRecorder.instances = [];
+  vi.stubGlobal('MediaRecorder', FakeRecorder);
+  vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } });
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('Recorder cancellation (mocked media)', () => {
+  it('stop() resolves a blob and stops the tracks', async () => {
+    const stream = new FakeStream();
+    stubMedia(async () => stream);
+    const rec = new Recorder();
+    await rec.start();
+    expect(rec.recording).toBe(true);
+    const blob = await rec.stop();
+    expect(blob.size).toBeGreaterThanOrEqual(0);
+    expect(stream.tracks.every((t) => t.stopped)).toBe(true);
+    expect(rec.recording).toBe(false);
+  });
+
+  it('cancel() stops tracks, clears the recorder and resolves a pending stop() as cancelled', async () => {
+    const stream = new FakeStream();
+    stubMedia(async () => stream);
+    const rec = new Recorder();
+    await rec.start();
+    const p = rec.stop();
+    rec.cancel();
+    await expect(p).rejects.toThrow('cancelled');
+    expect(stream.tracks.every((t) => t.stopped)).toBe(true);
+    await expect(rec.stop()).rejects.toThrow('Not recording');
+  });
+
+  it('a getUserMedia resolving after cancel() stops the fresh tracks and rejects', async () => {
+    const stream = new FakeStream();
+    let resolveGum: (s: FakeStream) => void = () => {};
+    stubMedia(
+      () =>
+        new Promise<FakeStream>((r) => {
+          resolveGum = r;
+        }),
+    );
+    const rec = new Recorder();
+    const p = rec.start();
+    rec.cancel();
+    resolveGum(stream);
+    await expect(p).rejects.toThrow('cancelled');
+    expect(stream.tracks.every((t) => t.stopped)).toBe(true);
+    expect(rec.recording).toBe(false);
+  });
+
+  it('a cancelled recorder cannot deliver chunks to a later stop()', async () => {
+    const stream = new FakeStream();
+    stubMedia(async () => stream);
+    const rec = new Recorder();
+    await rec.start();
+    FakeRecorder.instances[0].ondataavailable?.({ data: new Blob(['old']) });
+    rec.cancel();
+    await expect(rec.stop()).rejects.toThrow('Not recording');
   });
 });

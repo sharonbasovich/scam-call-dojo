@@ -67,9 +67,101 @@ describe('user move edge cases', () => {
     expect(ids("This isn't a scam, right?", 'user')).not.toContain('refuse');
     expect(ids('Not a chance', 'user')).toContain('refuse');
   });
-  it('credits checking with family or asking for it in writing', () => {
+  it('credits checking with a trusted person, but not caller-controlled channels', () => {
     expect(ids('Hold on, let me call my dad', 'user')).toContain('verify');
-    expect(ids('Can you email me instead?', 'user')).toContain('verify');
+    expect(ids('Can you email me instead?', 'user')).toContain('defer-channel');
+    expect(ids('Can you email me instead?', 'user')).not.toContain('verify');
+  });
+});
+
+describe('verification semantics', () => {
+  it('does not credit caller-controlled channels as independent verification', () => {
+    for (const t of ['Email me', 'Call you back', "I'll call back", 'Send me a text', 'Put it in writing', "What's your number?", 'Send me the link', 'Text it to me']) {
+      const r = ids(t, 'user');
+      expect(r, t).toContain('defer-channel');
+      expect(r, t).not.toContain('verify');
+    }
+  });
+  it('still credits trusted-source verification and known-number call-backs', () => {
+    for (const t of [
+      "I'll call the number on the back of my card",
+      "I'll call you back on your old number",
+      "I'm going to call you back on your usual number",
+      "I'll check with the office first",
+      'Let me verify this on the official website',
+      "I'll contact my exchange through the official app",
+      'Hang up and call the number on my card',
+      'Let me look it up myself',
+      "I'll ask my mom",
+      'I will call the bank on the number I have',
+      "I'll look up the number myself",
+      'Let me search for the official website',
+    ]) expect(ids(t, 'user'), t).toContain('verify');
+  });
+  it('does not count negated or quoted safe phrases', () => {
+    for (const t of [
+      "I can't call the number on my card",
+      "I won't check with my bank",
+      "I'm not going to verify anything",
+      "This isn't a scam, I'm not calling anyone",
+      "I never call back",
+      'He said "call the number on your card"',
+      'The script says "hang up and call the bank"',
+    ]) expect(ids(t, 'user'), t).not.toContain('verify');
+    for (const t of ["I can't say this is a scam", "I'm not saying no"]) expect(ids(t, 'user'), t).not.toContain('refuse');
+  });
+  it('negation in an earlier clause does not block a later safe move', () => {
+    expect(ids("I don't share codes. I'll call the number on my card", 'user')).toContain('verify');
+    expect(ids("Employers don't charge fees. This is a scam. Bye.", 'user')).toContain('refuse');
+    expect(ids('I never share codes so let me call my bank', 'user')).toContain('verify');
+    expect(ids("I won't share anything, but I will check with the office", 'user')).toContain('verify');
+  });
+  it('does not credit caller-side or reported verification', () => {
+    for (const t of [
+      'Can I ask your manager?',
+      "I'll check with you",
+      "What's your official number?",
+      'Send me the official website link',
+      "I'll verify the number you gave me",
+      "I'll hang up and call the number you gave me",
+      'He told me to call the number on my card',
+      'The caller said to check the official website',
+      'Call you back on this number',
+      "I'll call you back on the number you called from",
+      "I'll check with the person who called me",
+      "I'll look up the number you gave me",
+    ]) {
+      const r = ids(t, 'user');
+      expect(r, t).not.toContain('verify');
+    }
+  });
+  it('flags caller-supplied channels as deferrals, and keeps trusted call-backs as verify', () => {
+    for (const t of ["I'll hang up and call the number you gave me", 'Can I ask your manager?', "I'll call you back on the number you called from"]) {
+      expect(ids(t, 'user'), t).toContain('defer-channel');
+    }
+    for (const t of ["I'll call you back on your old number", 'Call you back on the number I already have']) {
+      expect(ids(t, 'user'), t).toContain('verify');
+      expect(ids(t, 'user'), t).not.toContain('defer-channel');
+    }
+  });
+  it('a leading "no need" is not a refusal', () => {
+    for (const t of ['No need to verify, I trust you', 'No need to check, I trust you']) {
+      const r = ids(t, 'user');
+      expect(r, t).not.toContain('refuse');
+      expect(r, t).not.toContain('verify');
+    }
+  });
+  it('refusing to take a safe action is not itself a refusal', () => {
+    for (const t of [
+      "I'm not going to call the number on the back of my card",
+      "I won't check with my bank",
+      "I'm not hanging up",
+      'I am not going to hang up',
+    ]) {
+      const r = ids(t, 'user');
+      expect(r, t).not.toContain('refuse');
+      expect(r, t).not.toContain('verify');
+    }
   });
 });
 
@@ -84,6 +176,12 @@ describe('helpers', () => {
     expect(isHangUpIntent("I won't hang up")).toBe(false);
     expect(isHangUpIntent("I'm going to send the money")).toBe(false);
     expect(isHangUpIntent("I'm going now")).toBe(true);
+  });
+  it('ignores negated, reported and unrelated click mentions of hanging up', () => {
+    for (const t of ["I'm not going to hang up", "I'm not hanging up", 'He told me to hang up', 'She said "hang up"', 'Which link do I click?']) {
+      expect(isHangUpIntent(t), t).toBe(false);
+    }
+    expect(isHangUpIntent("I can't take this. Bye.")).toBe(true);
   });
   it('has unique rule ids and at least 20 rules', () => {
     expect(new Set(RULES.map((r) => r.id)).size).toBe(RULES.length);
