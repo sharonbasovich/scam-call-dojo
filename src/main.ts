@@ -4,6 +4,7 @@ import { CallSession } from './engine/call';
 import { SCENARIOS, getScenario } from './engine/scenarios';
 import type { Autopsy, Belt, Flag, Scenario, TacticCategory, TranscriptLine } from './engine/types';
 import { Recorder, deapiSpeech, deapiTranscribe, playBlob, stopDeapiAudio } from './voice/deapi';
+import { MicSession } from './voice/micSession';
 import { canListenLocally, canSpeakLocally, listenLocally, speakLocally, stopListening, stopLocalSpeech } from './voice/local';
 import { esc, highlight } from './ui/highlight';
 import { ICONS } from './ui/icons';
@@ -289,13 +290,26 @@ function bubble(l: TranscriptLine, coach: boolean): string {
     ${coach && l.flags.length ? `<div class="chips">${flagChips(l.flags)}</div>` : ''}<time>${formatTime(l.t)}</time></li>`;
 }
 
-function stopVoice(): void {
+/** Stops caller playback and dictation; leaves any user recording untouched. */
+function stopPlayback(): void {
   speakToken += 1;
   stopLocalSpeech();
   stopDeapiAudio();
   stopListening();
+}
+
+function setMicIdle(): void {
+  const m = app.querySelector<HTMLButtonElement>('#mic');
+  m?.setAttribute('aria-pressed', 'false');
+  m?.classList.remove('rec');
+}
+
+/** Full teardown on hang-up/send/cleanup: playback plus the recorder itself. */
+function stopVoice(): void {
+  stopPlayback();
   recorder?.cancel();
   recorder = null;
+  setMicIdle();
 }
 
 async function speak(s: Scenario, text: string): Promise<void> {
@@ -423,42 +437,33 @@ function inCall(call: CallSession): void {
 
   const mic = app.querySelector<HTMLButtonElement>('#mic');
   let micBusy = false;
+  const micSession = new MicSession(
+    recorder ?? (recorder = new Recorder()),
+    () => ensureConsent('deapi'),
+    () => call === current && !call.ended,
+  );
   mic?.addEventListener('click', async () => {
     if (micBusy || call.ended || call !== current) return;
     micBusy = true;
-    stopVoice();
+    stopPlayback();
     const useDeapi = settings.voice === 'deapi' && !!deapiKey();
     try {
       if (useDeapi) {
-        const rec = recorder ?? new Recorder();
-        recorder = rec;
-        if (!rec.recording) {
-          if (!(await ensureConsent('deapi'))) {
-            if (call === current && !call.ended) notice('deAPI voice not enabled — nothing was recorded or sent. Typing works.');
-            return;
-          }
-          if (call.ended || call !== current) return;
-          await rec.start();
-          if (call.ended || call !== current) {
-            rec.cancel();
-            return;
-          }
+        const tap = await micSession.tap();
+        if (tap.action === 'started') {
           mic.setAttribute('aria-pressed', 'true');
           mic.classList.add('rec');
           notice('Recording… tap the mic again to send.');
-          return;
+        } else if (tap.action === 'transcribe') {
+          setMicIdle();
+          notice('Transcribing with deAPI Whisper…');
+          const text = await deapiTranscribe(deapiKey(), tap.blob);
+          if (call.ended || call !== current) return;
+          notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
+          if (text) await send(text);
+        } else if (call === current && !call.ended && !micSession.recording) {
+          notice('deAPI voice not enabled — nothing was recorded or sent. Typing works.');
         }
-        if (call.ended || call !== current) {
-          rec.cancel();
-          return;
-        }
-        mic.setAttribute('aria-pressed', 'false');
-        mic.classList.remove('rec');
-        notice('Transcribing with deAPI Whisper…');
-        const text = await deapiTranscribe(deapiKey(), await rec.stop());
-        if (call.ended || call !== current) return;
-        notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
-        if (text) await send(text);
       } else {
         if (!(await ensureConsent('browser'))) {
           if (call === current && !call.ended) notice('Dictation not started — nothing was recorded or sent. Typing works.');
@@ -470,14 +475,12 @@ function inCall(call: CallSession): void {
         notice('Listening…');
         const text = await listenLocally();
         if (call.ended || call !== current) return;
-        mic.setAttribute('aria-pressed', 'false');
-        mic.classList.remove('rec');
+        setMicIdle();
         notice(text ? `Heard: “${text}”` : 'Didn’t catch that. Try again or type.');
         if (text) await send(text);
       }
     } catch (err) {
-      mic.setAttribute('aria-pressed', 'false');
-      mic.classList.remove('rec');
+      setMicIdle();
       notice(`${(err as Error).message} You can always type instead.`);
     } finally {
       micBusy = false;

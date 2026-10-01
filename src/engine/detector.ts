@@ -17,7 +17,7 @@ const NEGATOR = /\b(don'?t|do not|won'?t|will not|can'?t|cannot|couldn'?t|didn'?
  * check back through the caller's own side ("ask your manager").
  */
 const CALLER_CHANNEL =
-  /\b(send|sent|give|gave|tell|told|text(?:ed)?|e-?mail(?:ed)?|forward(?:ed)?) (me|us)\b|\bwhat('?s| is| was| are) your\b|\b(?:number|phone|extension|e-?mail|link|web ?site|code|details?) (?:you|u|the caller|he|she|they|that (?:you|he|she|they)) (?:gave|sent|send|said|provided|text(?:ed)?|told|shared|called)\b|\b(?:you|u|the caller|he|she|they) (?:gave|sent|send|provided|text(?:ed)?|shared|called)\b|\b(?:with|from|ask|asking|speak (?:to|with)|talk (?:to|with)|check with) (?:you|the caller)\b|\bcall(?:ing)? (?:you|them|him|her) back\b(?! on\b)|\byour (?:manager|supervisor|boss)\b/i;
+  /\b(send|sent|give|gave|tell|told|text(?:ed)?|e-?mail(?:ed)?|forward(?:ed)?) (me|us)\b|\bwhat('?s| is| was| are) your\b|\b(?:number|phone|extension|e-?mail|link|web ?site|code|details?) (?:you|u|the caller|he|she|they|that (?:you|he|she|they)) (?:gave|sent|send|said|provided|text(?:ed)?|told|shared|called)\b|\b(?:you|u|the caller|he|she|they) (?:gave|sent|send|provided|text(?:ed)?|shared|called)\b|\b(?:with|from|ask|asking|speak (?:to|with)|talk (?:to|with)|check with) (?:you|the caller)\b|\bcall(?:ing)? (?:you|them|him|her) back\b(?! on\b)|\byour (?:manager|supervisor|boss)\b|\b(?:who|that) (?:called|rang|phoned)(?: me| us)?\b/i;
 /** Reported or second-hand instructions are not actions the user took. */
 const REPORTED = /\b(?:he|she|they|the caller|the (?:agent|guy|woman|man|officer|person|script)|you) (?:said|says|told|asked|claimed|instructed|insisted|advised|wants?(?: me| us)? to)\b/i;
 const SAFE_MOVES = new Set(['verify', 'refuse']);

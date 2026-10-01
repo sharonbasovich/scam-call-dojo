@@ -94,6 +94,8 @@ describe('verification semantics', () => {
       'Let me look it up myself',
       "I'll ask my mom",
       'I will call the bank on the number I have',
+      "I'll look up the number myself",
+      'Let me search for the official website',
     ]) expect(ids(t, 'user'), t).toContain('verify');
   });
   it('does not count negated or quoted safe phrases', () => {
@@ -126,6 +128,8 @@ describe('verification semantics', () => {
       'The caller said to check the official website',
       'Call you back on this number',
       "I'll call you back on the number you called from",
+      "I'll check with the person who called me",
+      "I'll look up the number you gave me",
     ]) {
       const r = ids(t, 'user');
       expect(r, t).not.toContain('verify');
@@ -138,6 +142,13 @@ describe('verification semantics', () => {
     for (const t of ["I'll call you back on your old number", 'Call you back on the number I already have']) {
       expect(ids(t, 'user'), t).toContain('verify');
       expect(ids(t, 'user'), t).not.toContain('defer-channel');
+    }
+  });
+  it('a leading "no need" is not a refusal', () => {
+    for (const t of ['No need to verify, I trust you', 'No need to check, I trust you']) {
+      const r = ids(t, 'user');
+      expect(r, t).not.toContain('refuse');
+      expect(r, t).not.toContain('verify');
     }
   });
   it('refusing to take a safe action is not itself a refusal', () => {

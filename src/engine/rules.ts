@@ -125,6 +125,7 @@ export const RULES: Rule[] = [
       /\bhang up and (call|check|verify|look)\b/i,
       /\bcall (you|them|him|her) back on (the |your |my )?(old|usual|known)\b/i,
       /\bcall (you|them|him|her) back on (the )?number (i|we) (have|already have|know)\b/i,
+      /\b(?:look(?:ing)? ?up|find|search(?:ing)? for|google|check(?:ing)?) (?:the |a |an |that |this )?(?:official |real )?(?:number|phone ?number|website|web ?site|details?|info(?:rmation)?|branch|company|bank|app|address|reviews?|complaints?)\b/i,
     ],
     explain: 'Hanging up and contacting the organisation through a number you already trust beats every script.',
   },
@@ -147,7 +148,7 @@ export const RULES: Rule[] = [
   },
   {
     id: 'refuse', label: 'Refused or called it out', side: 'user', move: 'refuse', severity: 1,
-    patterns: [/\b((?<!oh )no\b(?! (problem|idea|worries))|no way|not a chance|nope|not (going to|gonna) (pay|give|send|buy|share|tell|hand|wire|transfer|download|do (it|that)|help|read|repeat|confirm|comply|stay|go)|i won'?t (pay|give|share|send|tell|buy|wire|transfer|download|hand|do (it|that)|comply|help|stay|read|repeat|confirm|say|go)|i don'?t (give|share|pay|send|trust)|this (is|sounds like) a scam|(?<!(isn'?t|not) a )scam(mer)?(?!,? right)|goodbye|bye|hang(ing)? up|not interested|stop calling)\b/i],
+    patterns: [/\b((?<!oh )no\b(?! (problem|idea|worries|need))|no way|not a chance|nope|not (going to|gonna) (pay|give|send|buy|share|tell|hand|wire|transfer|download|do (it|that)|help|read|repeat|confirm|comply|stay|go)|i won'?t (pay|give|share|send|tell|buy|wire|transfer|download|hand|do (it|that)|comply|help|stay|read|repeat|confirm|say|go)|i don'?t (give|share|pay|send|trust)|this (is|sounds like) a scam|(?<!(isn'?t|not) a )scam(mer)?(?!,? right)|goodbye|bye|hang(ing)? up|not interested|stop calling)\b/i],
     explain: 'A clear no ends the game. Scammers only win on calls that keep going.',
   },
 ];
