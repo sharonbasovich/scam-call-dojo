@@ -1,0 +1,40 @@
+name: Capture current-build demo (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'sharonbasovich/scam-call-dojo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Record unchanged product source
+        run: |
+          mkdir -p demo-capture
+          git rev-parse HEAD > demo-capture/source-commit.txt
+          git ls-files -z src tests index.html package.json package-lock.json vite.config.ts tsconfig.json | xargs -0 sha256sum > demo-capture/source-sha256.txt
+          git status --porcelain > demo-capture/source-status.txt
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Install isolated capture tooling
+        run: |
+          npm install --no-save --package-lock=false playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Capture genuine product interactions
+        run: |
+          npm run preview -- --host 127.0.0.1 > /tmp/dojo-preview.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173/scam-call-dojo/ >/dev/null && break; sleep 1; done
+          node scripts/capture-demo.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dojo-current-build-capture
+          path: demo-capture/
+          retention-days: 7
