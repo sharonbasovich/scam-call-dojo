@@ -20,7 +20,8 @@ const mark = async (name, seconds = 0) => {
 const body = () => page.locator('#app').innerText();
 const scrollTo = async selector => { await page.locator(selector).scrollIntoViewIfNeeded(); await page.waitForTimeout(700); };
 try {
-  await page.goto('http://127.0.0.1:4173/scam-call-dojo/', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: 'Pick your sparring partner', exact: true }).waitFor();
   await mark('01-home', 6);
   await page.getByRole('button', { name: /The Frozen Account/ }).click();
   await mark('02-incoming', 5);
